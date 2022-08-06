@@ -53,5 +53,6 @@ class Module(Object):
 class Class(Object):
     pass
 
+
 class Function(Object):
     pass
