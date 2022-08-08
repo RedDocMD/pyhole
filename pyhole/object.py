@@ -69,13 +69,15 @@ class Function(Object):
 class ObjectCreator(ast.NodeVisitor):
     ob_stack: list[Object]
     filename: PurePath
+    line_cnt: int
 
-    def __init__(self, filename: PurePath):
+    def __init__(self, filename: PurePath, line_cnt: int):
         self.ob_stack = []
         self.filename = filename
+        self.line_cnt = line_cnt
 
     def _parent(self) -> Union[Object, None]:
-        if len(self.ob_stack) == 0:
+        if len(self.ob_stack) > 0:
             return self.ob_stack[-1]
         else:
             return None
@@ -92,10 +94,11 @@ class ObjectCreator(ast.NodeVisitor):
 
     def visit_Module(self, mod: ast.Module) -> Any:
         par = self._parent()
-        ss = self._source_span(mod)
+        ss = SourceSpan(self.filename, 1, self.line_cnt)
         name = self._mod_name()
         ob = Module(ss, name, par)
         # Now visit children
         self.ob_stack.append(ob)
         self.generic_visit(mod)
         self.ob_stack.pop()
+        return ob
