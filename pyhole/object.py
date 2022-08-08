@@ -32,14 +32,14 @@ class ObjectPath:
 class Object:
     source_span: SourceSpan
     parent: Union['Object', None]
-    children: list['Object']
+    children: dict[str, 'Object']
     name: str
 
     def __init__(self, source_span: SourceSpan, name: str, parent: 'Object' = None) -> None:
         self.source_span = source_span
         self.parent = parent
         self.name = name
-        self.children = []
+        self.children = {}
 
     def full_path(self) -> ObjectPath:
         path = ObjectPath()
@@ -49,8 +49,9 @@ class Object:
             obj = obj.parent
         return path
 
-    def append_child(self, child: 'Object') -> None:
-        self.children.append(child)
+    def append_child(self, name: str, child: 'Object') -> None:
+        assert name not in self.children
+        self.children[name] = child
 
 
 class Module(Object):
@@ -59,7 +60,8 @@ class Module(Object):
 
 
 class Class(Object):
-    pass
+    def __init__(self, source_span: SourceSpan, name: str, parent: 'Object' = None) -> None:
+        super().__init__(source_span, name, parent)
 
 
 class Function(Object):
@@ -96,9 +98,30 @@ class ObjectCreator(ast.NodeVisitor):
         par = self._parent()
         ss = SourceSpan(self.filename, 1, self.line_cnt)
         name = self._mod_name()
+
         ob = Module(ss, name, par)
+        if par:
+            par.append_child(name, ob)
+
         # Now visit children
         self.ob_stack.append(ob)
         self.generic_visit(mod)
         self.ob_stack.pop()
+
+        return ob
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> Any:
+        par = self._parent()
+        ss = self._source_span(node)
+        name = node.name
+
+        ob = Class(ss, name, par)
+        if par:
+            par.append_child(name, ob)
+
+        # Now visit children
+        self.ob_stack.append(ob)
+        self.generic_visit(node)
+        self.ob_stack.pop()
+
         return ob
