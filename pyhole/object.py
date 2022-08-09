@@ -65,7 +65,11 @@ class Class(Object):
 
 
 class Function(Object):
-    pass
+    args: ast.arguments
+
+    def __init__(self, args: ast.arguments, source_span: SourceSpan, name: str, parent: 'Object' = None) -> None:
+        super().__init__(source_span, name, parent)
+        self.args = args
 
 
 class ObjectCreator(ast.NodeVisitor):
@@ -116,6 +120,22 @@ class ObjectCreator(ast.NodeVisitor):
         name = node.name
 
         ob = Class(ss, name, par)
+        if par:
+            par.append_child(name, ob)
+
+        # Now visit children
+        self.ob_stack.append(ob)
+        self.generic_visit(node)
+        self.ob_stack.pop()
+
+        return ob
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> Any:
+        par = self._parent()
+        ss = self._source_span(node)
+        name = node.name
+
+        ob = Function(node.args, ss, name, par)
         if par:
             par.append_child(name, ob)
 

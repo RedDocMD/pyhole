@@ -38,6 +38,7 @@ class Thing:
 
     assert isinstance(mod, pho.Module)
     assert mod.name == "simple"
+    assert len(mod.children) == 4
 
 
 def test_class():
@@ -55,3 +56,4 @@ class Thing:
     cls = mod.children['Thing']
     assert isinstance(cls, pho.Class)
     assert cls.name == "Thing"
+    assert len(cls.children) == 2
