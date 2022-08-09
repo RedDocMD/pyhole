@@ -3,6 +3,18 @@ import pathlib
 import pyhole.object as pho
 
 
+default_filename = "simple/__init__.py"
+
+
+def root_object(code: str, filename: str = default_filename) -> pho.Object:
+    filepath = pathlib.PosixPath(filename)
+    tree = ast.parse(code, str(filepath))
+    lines = code.split('\n')
+    line_cnt = len(lines)
+    ctr = pho.ObjectCreator(filepath, line_cnt)
+    return ctr.visit(tree)
+
+
 def test_module():
     code = """
 def standalone_func1():
@@ -22,13 +34,7 @@ class Thing:
     def member1(self):
         pass
 """
-    filename = pathlib.PosixPath("simple/__init__.py")
-    tree = ast.parse(code, str(filename))
-    lines = code.split('\n')
-    line_cnt = len(lines)
-
-    ctr = pho.ObjectCreator(filename, line_cnt)
-    mod = ctr.visit(tree)
+    mod = root_object(code)
 
     assert isinstance(mod, pho.Module)
     assert mod.name == "simple"
@@ -43,17 +49,9 @@ class Thing:
     def member1(self):
         pass
 """
-    filename = pathlib.PosixPath("simple/__init__.py")
-    tree = ast.parse(code, str(filename))
-    lines = code.split('\n')
-    line_cnt = len(lines)
-
-    ctr = pho.ObjectCreator(filename, line_cnt)
-    mod = ctr.visit(tree)
-
+    mod = root_object(code)
     assert isinstance(mod, pho.Module)
 
     cls = mod.children['Thing']
-
     assert isinstance(cls, pho.Class)
     assert cls.name == "Thing"
