@@ -26,16 +26,18 @@ class ObjectPath:
         self.components.append(part)
 
     def __str__(self) -> str:
-        return '.'.join(self.components)
+        return ".".join(self.components)
 
 
 class Object:
     source_span: SourceSpan
-    parent: Union['Object', None]
-    children: dict[str, 'Object']
+    parent: Union["Object", None]
+    children: dict[str, "Object"]
     name: str
 
-    def __init__(self, source_span: SourceSpan, name: str, parent: 'Object' = None) -> None:
+    def __init__(
+        self, source_span: SourceSpan, name: str, parent: "Object" = None
+    ) -> None:
         self.source_span = source_span
         self.parent = parent
         self.name = name
@@ -49,25 +51,35 @@ class Object:
             obj = obj.parent
         return path
 
-    def append_child(self, name: str, child: 'Object') -> None:
+    def append_child(self, name: str, child: "Object") -> None:
         assert name not in self.children
         self.children[name] = child
 
 
 class Module(Object):
-    def __init__(self, source_span: SourceSpan, name: str, parent: 'Object' = None) -> None:
+    def __init__(
+        self, source_span: SourceSpan, name: str, parent: "Object" = None
+    ) -> None:
         super().__init__(source_span, name, parent)
 
 
 class Class(Object):
-    def __init__(self, source_span: SourceSpan, name: str, parent: 'Object' = None) -> None:
+    def __init__(
+        self, source_span: SourceSpan, name: str, parent: "Object" = None
+    ) -> None:
         super().__init__(source_span, name, parent)
 
 
 class Function(Object):
     args: ast.arguments
 
-    def __init__(self, args: ast.arguments, source_span: SourceSpan, name: str, parent: 'Object' = None) -> None:
+    def __init__(
+        self,
+        args: ast.arguments,
+        source_span: SourceSpan,
+        name: str,
+        parent: "Object" = None,
+    ) -> None:
         super().__init__(source_span, name, parent)
         self.args = args
 

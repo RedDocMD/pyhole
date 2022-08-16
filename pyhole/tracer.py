@@ -41,10 +41,10 @@ class Tracer:
         pass
 
     def trace_global(self, frame, event, _):
-        if event == 'call':
+        if event == "call":
             return self._trace_call(frame)
-        if self.start_tracing and event == 'line':
+        if self.start_tracing and event == "line":
             return self._trace_line(frame)
-        if self.start_tracing and event == 'return':
+        if self.start_tracing and event == "return":
             return self._trace_return(frame)
         return self.trace_global
