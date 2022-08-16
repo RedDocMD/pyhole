@@ -83,6 +83,9 @@ class Function(Object):
         super().__init__(source_span, name, parent)
         self.args = args
 
+    def has_kwargs_dict(self) -> bool:
+        return self.args.kwarg is not None
+
 
 class ObjectCreator(ast.NodeVisitor):
     ob_stack: list[Object]

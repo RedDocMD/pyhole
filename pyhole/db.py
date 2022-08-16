@@ -23,10 +23,19 @@ class ObjectDb:
     def __init__(self) -> None:
         self.db = {}
 
-    def insert(self, pos: Position, ob: Object) -> None:
+    def __setitem__(self, pos: Position, ob: Object) -> None:
         if pos in self.db:
             raise RuntimeError(f"{pos} already exists in db")
         self.db[pos] = ob
 
-    def get(self, pos: Position) -> Object:
+    def __getitem__(self, pos: Position) -> Object:
         return self.db[pos]
+
+    def __len__(self) -> int:
+        return len(self.db)
+
+    def __iter__(self):
+        return self.db
+
+    def items(self):
+        return self.db.items()
