@@ -1,6 +1,6 @@
 from pathlib import PurePath, Path
-from object import ObjectCreator, Object, Module, SourceSpan, Function
-from db import ObjectDb, Position
+from .object import ObjectCreator, Object, Module, SourceSpan, Function
+from .db import ObjectDb, Position
 from typing import Tuple
 import re
 import ast
@@ -67,17 +67,19 @@ class Project:
     root: PurePath
     db: ObjectDb
     kw_fns: ObjectDb
+    root_ob: Object
 
     def __init__(self, root: PurePath) -> None:
         self.root = root
         self.db = ObjectDb()  # All objects
         self.kw_fns = ObjectDb()  # Functions with keyword arguments
+        self.root_ob = None
 
         self._populate_db()
         self._find_kw_fns()
 
     def _find_kw_fns(self):
-        for pos, ob in self.ob.items():
+        for pos, ob in self.db.items():
             if isinstance(ob, Function) and ob.has_kwargs_dict():
                 self.kw_fns[pos] = ob
 
@@ -88,10 +90,13 @@ class Project:
     def _populate_db_intern(self, par_st: list[Object], directory: PurePath):
         par = par_st[-1]
         new_mod, new_dirs = self._populate_from_directory(directory, par)
-        par.append(new_mod)
+        if self.root_ob is None:
+            self.root_ob = new_mod
+        if par:
+            par.append(new_mod)
         for new_dir in new_dirs:
             self._populate_db_intern(par_st, new_dir)
-        par.pop()
+        par_st.pop()
 
     # Populate db using directory as root
     # Returns list of sub-directories
@@ -111,6 +116,7 @@ class Project:
         for file in drc.files:
             mod = mod_from_file(file)
             mod.parent = main_mod
+            main_mod.append_child(mod.name, mod)
             self._populate_from_object(mod)
 
         return (main_mod, drc.dirs)
@@ -118,5 +124,5 @@ class Project:
     def _populate_from_object(self, ob: Object):
         pos = position_from_source_span(ob.source_span)
         self.db[pos] = ob
-        for child in ob.children:
+        for child in ob.children.values():
             self._populate_from_object(child)

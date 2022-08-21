@@ -55,6 +55,26 @@ class Object:
         assert name not in self.children
         self.children[name] = child
 
+    def ob_type(self) -> str:
+        raise RuntimeError("ob_type must be subclassed!")
+
+    def _dump_tree_intern(self, level=0) -> None:
+        padding = "  " * level
+        print(
+            "{}{} ({}) => {}:{}".format(
+                padding,
+                self.name,
+                self.ob_type(),
+                self.source_span.filename,
+                self.source_span.start_line,
+            )
+        )
+        for child in self.children.values():
+            child._dump_tree_intern(level + 1)
+
+    def dump_tree(self) -> None:
+        self._dump_tree_intern()
+
 
 class Module(Object):
     def __init__(
@@ -62,12 +82,18 @@ class Module(Object):
     ) -> None:
         super().__init__(source_span, name, parent)
 
+    def ob_type(self) -> str:
+        return "mod"
+
 
 class Class(Object):
     def __init__(
         self, source_span: SourceSpan, name: str, parent: "Object" = None
     ) -> None:
         super().__init__(source_span, name, parent)
+
+    def ob_type(self) -> str:
+        return "class"
 
 
 class Function(Object):
@@ -85,6 +111,9 @@ class Function(Object):
 
     def has_kwargs_dict(self) -> bool:
         return self.args.kwarg is not None
+
+    def ob_type(self) -> str:
+        return "func"
 
 
 class ObjectCreator(ast.NodeVisitor):

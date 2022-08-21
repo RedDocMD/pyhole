@@ -1,4 +1,4 @@
-from object import Object
+from .object import Object
 from pathlib import PurePath
 
 
@@ -35,7 +35,7 @@ class ObjectDb:
         return len(self.db)
 
     def __iter__(self):
-        return self.db
+        return self.db.__iter__()
 
     def items(self):
         return self.db.items()
