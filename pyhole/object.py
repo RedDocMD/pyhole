@@ -85,6 +85,9 @@ class Module(Object):
     def ob_type(self) -> str:
         return "mod"
 
+    def __str__(self) -> str:
+        return "mod {}".format(self.name)
+
 
 class Class(Object):
     def __init__(
@@ -94,6 +97,9 @@ class Class(Object):
 
     def ob_type(self) -> str:
         return "class"
+
+    def __str__(self) -> str:
+        return "class {}".format(self.name)
 
 
 class Function(Object):
@@ -114,6 +120,35 @@ class Function(Object):
 
     def ob_type(self) -> str:
         return "func"
+
+    def _format_args(self) -> str:
+        def make_arg_list(l):
+            return ", ".join(map(lambda x: x.arg, l))
+
+        args = make_arg_list(self.args.args)
+        posonly = make_arg_list(self.args.posonlyargs)
+        kwonly = make_arg_list(self.args.kwonlyargs)
+
+        out = ""
+        if len(posonly) > 0:
+            out += posonly
+            out += "/"
+        out += args
+        if self.args.vararg:
+            if (len(out) > 0 and out[-1] != "/") or len(out) > 0:
+                out += ", "
+            out += "*{}".format(self.args.vararg.arg)
+            if len(kwonly) > 0:
+                out += ", {}".format(kwonly)
+        if self.args.kwarg:
+            if (len(out) > 0 and out[-1] != "/") or len(out) > 0:
+                out += ", "
+            out += "**{}".format(self.args.kwarg.arg)
+
+        return out
+
+    def __str__(self) -> str:
+        return "function {}({})".format(self.name, self._format_args())
 
 
 class ObjectCreator(ast.NodeVisitor):
