@@ -30,7 +30,7 @@ def dir_children(path: PurePath) -> DirChildren:
     dirs: list[PurePath] = []
     init: PurePath | None = None
     for child in path.iterdir():
-        if child.is_dir():
+        if child.is_dir() and child.name != "__pycache__":
             dirs.append(child)
         elif child.is_file():
             name = child.name

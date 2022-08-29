@@ -16,6 +16,25 @@ class Position:
     def __str__(self) -> str:
         return f"{self.filename}:{self.start_line}"
 
+    def __repr__(self):
+        return str(self)
+
+    def __hash__(self):
+        return hash((self.filename, self.start_line))
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return (
+                self.filename == other.filename and self.start_line == other.start_line
+            )
+        raise NotImplementedError
+
+    def __ne__(self, other):
+        if isinstance(other, self.__class__):
+            return not self.__eq__(other)
+        raise NotImplementedError
+
+
 
 class ObjectDb:
     db: dict[Position, Object]

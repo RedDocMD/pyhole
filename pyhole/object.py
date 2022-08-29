@@ -13,6 +13,29 @@ class SourceSpan:
         self.start_line = start_line
         self.end_line = end_line
 
+    def __str__(self) -> str:
+        return "{}:{}-{}".format(self.filename, self.start_line, self.end_line)
+
+    def __repr__(self):
+        return str(self)
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return (
+                self.filename == other.filename
+                and self.start_line == other.start_line
+                and self.end_line == other.end_line
+            )
+        raise NotImplementedError
+
+    def __ne__(self, other):
+        if isinstance(other, self.__class__):
+            return not self.__eq__(other)
+        raise NotImplementedError
+
+    def __hash__(self):
+        return hash((str(self.filename), self.start_line, self.end_line))
+
 
 class ObjectPath:
     components: list[str]
@@ -74,6 +97,22 @@ class Object:
 
     def dump_tree(self) -> None:
         self._dump_tree_intern()
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.source_span == other.source_span and self.name == other.name
+        return False
+
+    def __ne__(self, other):
+        if isinstance(other, self.__class__):
+            return not self.__eq__(other)
+        return False
+
+    def __hash__(self):
+        return hash((self.source_span, self.ob_type(), self.name))
 
 
 class Module(Object):

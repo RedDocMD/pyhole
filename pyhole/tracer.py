@@ -5,7 +5,6 @@ class Tracer:
     start_tracing: bool
 
     def __init__(self):
-        self.start_tracing = False
         self.old_trace_fn = None
 
     def enable_tracing(self):
@@ -15,6 +14,9 @@ class Tracer:
     def disable_tracing(self):
         sys.settrace(self.old_trace_fn)
         self.old_trace_fn = None
+
+    def _start_tracing(self) -> bool:
+        return self.start_tracing
 
     def _trace_line(self, frame):
         self.trace_line(frame)
@@ -43,8 +45,8 @@ class Tracer:
     def trace_global(self, frame, event, _):
         if event == "call":
             return self._trace_call(frame)
-        if self.start_tracing and event == "line":
+        if event == "line":
             return self._trace_line(frame)
-        if self.start_tracing and event == "return":
+        if event == "return":
             return self._trace_return(frame)
         return self.trace_global
