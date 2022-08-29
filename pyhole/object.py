@@ -122,8 +122,8 @@ class Function(Object):
         return "func"
 
     def _format_args(self) -> str:
-        def make_arg_list(l):
-            return ", ".join(map(lambda x: x.arg, l))
+        def make_arg_list(args):
+            return ", ".join(map(lambda x: x.arg, args))
 
         args = make_arg_list(self.args.args)
         posonly = make_arg_list(self.args.posonlyargs)
