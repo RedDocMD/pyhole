@@ -30,7 +30,7 @@ class SimpleKeywordTracer(Tracer):
             ob = self.db[pos]
             self.aux_call_stack.append((pos, ob))
             if ob in self.kw_fns:
-                print(ob)
+                print("Fun", ob)
                 self.kwfn_stack.append(ob)
 
     def trace_line(self, frame):
@@ -40,9 +40,17 @@ class SimpleKeywordTracer(Tracer):
         call_ob, _ = self.aux_call_stack[-1]
         if kw_ob != call_ob:
             return
-        pos = get_position(frame)
-        line = self.fc[pos]
-        stmt = ast.parse(line, pos.filename, mode="eval")
+        # pos = get_position(frame)
+        # line = self.fc[pos]
+        # line = line.strip()
+        # print("Line", line)
+        # try:
+        #     stmt = ast.parse(line, pos.filename, mode="single")
+        #     print("Stmt", ast.dump(stmt))
+        # except Exception as e:
+        #     print("Exception", e)
+        print(kw_ob.stmts)
+        stmt = kw_ob.stmts[frame.f_lineno]
         print(ast.dump(stmt))
 
     def trace_return(self, frame):

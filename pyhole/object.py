@@ -149,10 +149,12 @@ class Function(Object):
         args: ast.arguments,
         source_span: SourceSpan,
         name: str,
+        stmts,
         parent: "Object" = None,
     ) -> None:
         super().__init__(source_span, name, parent)
         self.args = args
+        self.stmts = stmts
 
     def has_kwargs_dict(self) -> bool:
         return self.args.kwarg is not None
@@ -188,6 +190,23 @@ class Function(Object):
 
     def __str__(self) -> str:
         return "function {}({})".format(self.name, self._format_args())
+
+
+def extract_statements_from_body(body):
+    stmts = {}
+    for stmt in body:
+        stmts.update(extract_statements(stmt))
+    return stmts
+
+
+def extract_statements(node):
+    stmts = {node.lineno: node}
+    match node:
+        case ast.For(body=body):
+            stmts.update(extract_statements_from_body(body))
+        case ast.With(body=body):
+            stmts.update(extract_statements_from_body(body))
+    return stmts
 
 
 class ObjectCreator(ast.NodeVisitor):
@@ -253,7 +272,9 @@ class ObjectCreator(ast.NodeVisitor):
         ss = self._source_span(node)
         name = node.name
 
-        ob = Function(node.args, ss, name, par)
+        # FIXME: Unroll statements recursively
+        stmts = extract_statements_from_body(node.body)
+        ob = Function(node.args, ss, name, stmts, par)
         if par:
             par.append_child(name, ob)
 
