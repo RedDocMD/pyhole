@@ -8,6 +8,7 @@ from termcolor import colored
 
 fun_txt = colored("Fun", 'grey', 'on_white')
 stmt_txt = colored("Stmt", 'grey', 'on_yellow')
+kwd_txt = colored("Valid keywords", 'grey', 'on_red', attrs=['bold'])
 
 
 def get_position(frame):
@@ -56,6 +57,14 @@ def stmt_has_call_expression(stmt):
             return None
 
 
+def extract_keywords(kwds):
+    ids = []
+    for kwd in kwds:
+        if kwd.arg:
+            ids.append(str(kwd.arg))
+    return ids
+
+
 class SimpleKeywordTracer(Tracer):
     db: ObjectDb
     kw_fns: ObjectDb
@@ -79,8 +88,9 @@ class SimpleKeywordTracer(Tracer):
             self.aux_call_stack.append((pos, ob))
             if ob in self.kw_fns:
                 print(fun_txt, ob, ob.source_span)
-                print('Kwd args: ', ' '.join(
-                    map(lambda x: str(x.arg), self.call_kwds)))
+                kwds = extract_keywords(self.call_kwds)
+                if len(kwds) > 0:
+                    print(kwd_txt, ', '.join(kwds))
                 self.kwfn_stack.append(ob)
         if self.doing_call:
             self.doing_call = False
@@ -111,7 +121,7 @@ class SimpleKeywordTracer(Tracer):
         if enc_ob is None or enc_ob != kw_ob:
             return
         stmt = kw_ob.stmts[frame.f_lineno]
-        print(stmt_txt, ast.dump(stmt))
+        # print(stmt_txt, ast.dump(stmt))
         call_expr = stmt_has_call_expression(stmt)
         if call_expr:
             self.doing_call = True
