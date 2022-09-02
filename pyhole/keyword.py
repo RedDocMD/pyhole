@@ -36,8 +36,24 @@ def nearest_enclosing_function(pos, db):
     return None
 
 
-def has_call_expression(stmt):
-    pass
+def expr_has_call_expression(expr):
+    match expr:
+        case ast.Call():
+            return expr
+        case _:
+            return None
+
+
+def stmt_has_call_expression(stmt):
+    match stmt:
+        case ast.Return(value=expr):
+            return expr_has_call_expression(expr)
+        case ast.Assign(value=expr):
+            return expr_has_call_expression(expr)
+        case ast.AugAssign(value=expr):
+            return expr_has_call_expression(expr)
+        case _:
+            return None
 
 
 class SimpleKeywordTracer(Tracer):
@@ -52,6 +68,8 @@ class SimpleKeywordTracer(Tracer):
         self.call_stack = []
         self.aux_call_stack = []
         self.kwfn_stack = []
+        self.doing_call = False
+        self.call_kwds = []
 
     def trace_call(self, frame):
         pos = get_position(frame)
@@ -61,10 +79,16 @@ class SimpleKeywordTracer(Tracer):
             self.aux_call_stack.append((pos, ob))
             if ob in self.kw_fns:
                 print(fun_txt, ob, ob.source_span)
+                print('Kwd args: ', ' '.join(
+                    map(lambda x: str(x.arg), self.call_kwds)))
                 self.kwfn_stack.append(ob)
+        if self.doing_call:
+            self.doing_call = False
 
     def trace_line(self, frame):
         if len(self.kwfn_stack) == 0:
+            return
+        if self.doing_call:
             return
         kw_ob = self.kwfn_stack[-1]
         call_ob, _ = self.aux_call_stack[-1]
@@ -86,9 +110,12 @@ class SimpleKeywordTracer(Tracer):
         enc_ob = nearest_enclosing_function(pos, self.db)
         if enc_ob is None or enc_ob != kw_ob:
             return
-        print(kw_ob.stmts)
         stmt = kw_ob.stmts[frame.f_lineno]
         print(stmt_txt, ast.dump(stmt))
+        call_expr = stmt_has_call_expression(stmt)
+        if call_expr:
+            self.doing_call = True
+            self.call_kwds = call_expr.keywords
 
     def trace_return(self, frame):
         call_pos = self.call_stack[-1]
