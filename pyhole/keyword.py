@@ -1,13 +1,43 @@
 from .tracer import Tracer
 from .db import ObjectDb, Position
 from .cache import FileCache
+from .object import Function
 import ast
+from termcolor import colored
+
+
+fun_txt = colored("Fun", 'grey', 'on_white')
+stmt_txt = colored("Stmt", 'grey', 'on_yellow')
 
 
 def get_position(frame):
     lineno = frame.f_lineno
     filename = frame.f_code.co_filename
     return Position(filename, lineno)
+
+
+class FunctionNotFound(Exception):
+    pass
+
+
+def nearest_enclosing_function(pos, db):
+    file_obs = []
+    for ob_pos, ob in db.items():
+        if ob_pos.filename == pos.filename:
+            file_obs.append((ob_pos.start_line, ob))
+    file_obs = sorted(file_obs, key=lambda x: x[0], reverse=True)
+    idx = 0
+    while idx < len(file_obs):
+        lineno, ob = file_obs[idx]
+        if lineno > pos.start_line:
+            idx += 1
+        elif isinstance(ob, Function):
+            return ob
+    return None
+
+
+def has_call_expression(stmt):
+    pass
 
 
 class SimpleKeywordTracer(Tracer):
@@ -30,7 +60,7 @@ class SimpleKeywordTracer(Tracer):
             ob = self.db[pos]
             self.aux_call_stack.append((pos, ob))
             if ob in self.kw_fns:
-                print("Fun", ob)
+                print(fun_txt, ob, ob.source_span)
                 self.kwfn_stack.append(ob)
 
     def trace_line(self, frame):
@@ -49,9 +79,16 @@ class SimpleKeywordTracer(Tracer):
         #     print("Stmt", ast.dump(stmt))
         # except Exception as e:
         #     print("Exception", e)
+        # print(kw_ob.source_span.filename, frame.f_code.co_filename)
+        # if str(kw_ob.source_span.filename) != str(frame.f_code.co_filename):
+        #     return
+        pos = get_position(frame)
+        enc_ob = nearest_enclosing_function(pos, self.db)
+        if enc_ob is None or enc_ob != kw_ob:
+            return
         print(kw_ob.stmts)
         stmt = kw_ob.stmts[frame.f_lineno]
-        print(ast.dump(stmt))
+        print(stmt_txt, ast.dump(stmt))
 
     def trace_return(self, frame):
         call_pos = self.call_stack[-1]
