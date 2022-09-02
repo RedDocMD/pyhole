@@ -37,6 +37,7 @@ def nearest_enclosing_function(pos, db):
     return None
 
 
+# TODO: Handle all valid expressions
 def expr_has_call_expression(expr):
     match expr:
         case ast.Call():
@@ -45,6 +46,7 @@ def expr_has_call_expression(expr):
             return None
 
 
+# TODO: Handle all valid statements
 def stmt_has_call_expression(stmt):
     match stmt:
         case ast.Return(value=expr):
@@ -104,24 +106,11 @@ class SimpleKeywordTracer(Tracer):
         call_ob, _ = self.aux_call_stack[-1]
         if kw_ob != call_ob:
             return
-        # pos = get_position(frame)
-        # line = self.fc[pos]
-        # line = line.strip()
-        # print("Line", line)
-        # try:
-        #     stmt = ast.parse(line, pos.filename, mode="single")
-        #     print("Stmt", ast.dump(stmt))
-        # except Exception as e:
-        #     print("Exception", e)
-        # print(kw_ob.source_span.filename, frame.f_code.co_filename)
-        # if str(kw_ob.source_span.filename) != str(frame.f_code.co_filename):
-        #     return
         pos = get_position(frame)
         enc_ob = nearest_enclosing_function(pos, self.db)
         if enc_ob is None or enc_ob != kw_ob:
             return
         stmt = kw_ob.stmts[frame.f_lineno]
-        # print(stmt_txt, ast.dump(stmt))
         call_expr = stmt_has_call_expression(stmt)
         if call_expr:
             self.doing_call = True

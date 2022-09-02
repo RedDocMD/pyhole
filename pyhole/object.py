@@ -199,6 +199,7 @@ def extract_statements_from_body(body):
     return stmts
 
 
+# TODO: Handle all valid nodes
 def extract_statements(node):
     stmts = {node.lineno: node}
     match node:
@@ -272,7 +273,6 @@ class ObjectCreator(ast.NodeVisitor):
         ss = self._source_span(node)
         name = node.name
 
-        # FIXME: Unroll statements recursively
         stmts = extract_statements_from_body(node.body)
         ob = Function(node.args, ss, name, stmts, par)
         if par:
