@@ -205,7 +205,15 @@ def extract_statements(node):
     match node:
         case ast.For(body=body):
             stmts.update(extract_statements_from_body(body))
+        case ast.AsyncFor(body=body):
+            stmts.update(extract_statements_from_body(body))
+        case ast.While(body=body):
+            stmts.update(extract_statements_from_body(body))
+        case ast.If(body=body):
+            stmts.update(extract_statements_from_body(body))
         case ast.With(body=body):
+            stmts.update(extract_statements_from_body(body))
+        case ast.AsyncWith(body=body):
             stmts.update(extract_statements_from_body(body))
     return stmts
 

@@ -2,9 +2,12 @@ from pyhole.project import Project
 from pyhole.keyword import SimpleKeywordTracer
 from pathlib import Path
 import codeop
+import logging
 
 
 if __name__ == "__main__":
+    logging.basicConfig(format='%(levelname)s: %(message)s',
+                        level=logging.DEBUG)
     cwd = Path.cwd()
     # Run from project root
     root = cwd / ".venv" / "lib" / "python3.10" / "site-packages" / "requests"
