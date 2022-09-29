@@ -4,7 +4,7 @@ from .cache import FileCache
 from .object import Function
 import ast
 from termcolor import colored
-from logging import debug
+import logging as lg
 
 
 fun_txt = colored("Fun", 'grey', 'on_white')
@@ -77,8 +77,11 @@ class SimpleKeywordTracer(Tracer):
         self.db = db
         self.kw_fns = set(kw_fns.db.values())
         self.fc = FileCache()
+        # All call positions
         self.call_stack = []
+        # All call positions in db (along with object)
         self.aux_call_stack = []
+        # All call positions for functions with kwargs
         self.kwfn_stack = []
         # Call_exprs must be sorted in terms of call order
         self.call_exprs = []
@@ -100,7 +103,7 @@ class SimpleKeywordTracer(Tracer):
                 self.kwfn_stack.append(ob)
         if self.call_exprs:
             self.call_exprs.pop()
-        if self.doing_call:
+        if self.doing_call and not self.call_exprs:
             self.doing_call = False
 
     def _update_call_expressions(self, stmt):
@@ -117,12 +120,14 @@ class SimpleKeywordTracer(Tracer):
         call_pos, call_ob = self.aux_call_stack[-1]
         if not isinstance(call_ob, Function):
             return
-        debug('%s: %s', call_ob, call_pos)
+        lg.debug('%s: %s', call_ob, call_pos)
         pos = get_position(frame)
         enc_ob = nearest_enclosing_function(pos, self.db)
-        if not enc_ob or enc_ob != call_ob:
+        if not enc_ob:
+            lg.critical("enc_ob is None, for %s", pos)
+        if enc_ob != call_ob:
             return
-        debug(call_ob.stmts)
+        lg.debug(call_ob.stmts)
         self._update_call_expressions(call_ob.stmts[frame.f_lineno])
 
         # TODO: Perform dictionary access analysis
