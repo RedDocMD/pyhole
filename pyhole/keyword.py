@@ -5,6 +5,7 @@ from .object import Function
 import ast
 from termcolor import colored
 import logging as lg
+from types import FrameType
 
 
 fun_txt = colored("Fun", 'grey', 'on_white')
@@ -87,7 +88,7 @@ class SimpleKeywordTracer(Tracer):
         self.call_exprs = []
         self.doing_call = False
 
-    def trace_call(self, frame):
+    def trace_call(self, frame: FrameType):
         pos = get_position(frame)
         self.call_stack.append(pos)
         if pos in self.db:
@@ -112,7 +113,7 @@ class SimpleKeywordTracer(Tracer):
             self.doing_call = True
             self.call_exprs.extend(call_exprs)
 
-    def trace_line(self, frame):
+    def trace_line(self, frame: FrameType):
         if self.doing_call:
             return
         if not self.aux_call_stack:
@@ -140,7 +141,7 @@ class SimpleKeywordTracer(Tracer):
         if enc_ob is None or enc_ob != kw_ob:
             return
 
-    def trace_return(self, frame):
+    def trace_return(self, frame: FrameType):
         call_pos = self.call_stack[-1]
         self.call_stack.pop()
         if len(self.aux_call_stack) > 0:
