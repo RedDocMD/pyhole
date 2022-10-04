@@ -5,6 +5,7 @@ import sys
 import logging as lg
 import _frozen_importlib  # type: ignore[import]
 import _frozen_importlib_external  # type: ignore[import]
+from .project import IncrementalProject
 
 
 class PyholeMetaPathFinder(abc.MetaPathFinder):
@@ -12,9 +13,11 @@ class PyholeMetaPathFinder(abc.MetaPathFinder):
     Custom meta path finder to add explore a project.
     Heavily inspired by https://github.com/google/atheris/blob/master/src/import_hook.py
     """
+    project: IncrementalProject
 
-    def __init__(self) -> None:
+    def __init__(self, project: IncrementalProject) -> None:
         super().__init__()
+        self.project = project
 
     def find_spec(
         self,
@@ -47,7 +50,8 @@ class PyholeMetaPathFinder(abc.MetaPathFinder):
                 continue
 
             if hasattr(spec.loader, 'path'):
-                lg.debug("Importing path: %s", spec.loader.path)
+                lg.debug("Importing path: %s (%s)", spec.loader.path, fullname)
+                self.project.add_file(spec.loader.path, fullname)
             else:
                 lg.warn('Loader returned for %s has no path', fullname)
 
@@ -71,8 +75,10 @@ class PyholeSourceFileLoader(_frozen_importlib_external.SourceFileLoader):
 
 
 class HookManager:
-    def __init__(self) -> None:
-        pass
+    project: IncrementalProject
+
+    def __init__(self, project: IncrementalProject) -> None:
+        self.project = project
 
     def __enter__(self) -> "HookManager":
         i = 0
@@ -87,7 +93,7 @@ class HookManager:
         ]:
             i += 1
 
-        sys.meta_path.insert(i, PyholeMetaPathFinder())
+        sys.meta_path.insert(i, PyholeMetaPathFinder(self.project))
 
         return self
 
@@ -100,5 +106,5 @@ class HookManager:
                 i += 1
 
 
-def populate_db():
-    return HookManager()
+def populate_db(project: IncrementalProject):
+    return HookManager(project)

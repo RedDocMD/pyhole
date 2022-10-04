@@ -1,5 +1,6 @@
 from pathlib import PurePath
 from typing import Any, Union
+from types import NoneType
 import ast
 
 
@@ -75,7 +76,8 @@ class Object:
         return path
 
     def append_child(self, name: str, child: "Object") -> None:
-        assert name not in self.children
+        assert name not in self.children, \
+            f'{name} already child of {self.ob_type()} {self.name}'
         self.children[name] = child
 
     def ob_type(self) -> str:
@@ -222,11 +224,13 @@ class ObjectCreator(ast.NodeVisitor):
     ob_stack: list[Object]
     filename: PurePath
     line_cnt: int
+    mod_name: str | NoneType
 
-    def __init__(self, filename: PurePath, line_cnt: int):
+    def __init__(self, filename: PurePath, line_cnt: int, mod_name: str | NoneType = None):
         self.ob_stack = []
         self.filename = filename
         self.line_cnt = line_cnt
+        self.mod_name = mod_name
 
     def _parent(self) -> Union[Object, None]:
         if len(self.ob_stack) > 0:
@@ -238,11 +242,13 @@ class ObjectCreator(ast.NodeVisitor):
         return SourceSpan(self.filename, node.lineno, node.end_lineno)
 
     def _mod_name(self) -> str:
+        if self.mod_name:
+            return self.mod_name
         parts = self.filename.parts
         if parts[-1] == "__init__.py":
             return parts[-2]
         else:
-            return parts[-1]
+            return parts[-1].split('.')[0]
 
     def visit_Module(self, mod: ast.Module) -> Any:
         par = self._parent()

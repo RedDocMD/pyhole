@@ -1,4 +1,5 @@
 from pathlib import PurePath, Path
+from types import NoneType
 from .object import ObjectCreator, Object, Module, SourceSpan, Function
 from .db import ObjectDb, Position
 from typing import Tuple
@@ -47,11 +48,13 @@ class InitPyNotFound(Exception):
     pass
 
 
-def mod_from_file(path: PurePath) -> Module:
+def mod_from_file(path: PurePath | str, mod_name: str | NoneType = None) -> Module:
+    if isinstance(path, str):
+        path = PurePath(path)
     with open(path) as f:
         code = f.read()
         line_cnt = len(code.split("\n"))
-        obc = ObjectCreator(path, line_cnt)
+        obc = ObjectCreator(path, line_cnt, mod_name)
         tree = ast.parse(code, str(path))
         assert isinstance(tree, ast.Module)
         return obc.visit(tree)
@@ -78,16 +81,16 @@ class Project:
         self._populate_db()
         self._find_kw_fns()
 
-    def _find_kw_fns(self):
+    def _find_kw_fns(self) -> None:
         for pos, ob in self.db.items():
             if isinstance(ob, Function) and ob.has_kwargs_dict():
                 self.kw_fns[pos] = ob
 
-    def _populate_db(self):
+    def _populate_db(self) -> None:
         par_st: list[Object | None] = [None]
         self._populate_db_intern(par_st, self.root)
 
-    def _populate_db_intern(self, par_st: list[Object], directory: PurePath):
+    def _populate_db_intern(self, par_st: list[Object], directory: PurePath) -> None:
         par = par_st[-1]
         new_mod, new_dirs = self._populate_from_directory(directory, par)
         if self.root_ob is None:
@@ -105,7 +108,8 @@ class Project:
     ) -> Tuple[Module, list[PurePath]]:
         drc = dir_children(directory)
         if drc.init is None:
-            raise InitPyNotFound("__init__.py not found in {}".format(directory))
+            raise InitPyNotFound(
+                "__init__.py not found in {}".format(directory))
 
         # Find main module of this directory
         main_mod = mod_from_file(drc.init)
@@ -121,8 +125,58 @@ class Project:
 
         return (main_mod, drc.dirs)
 
-    def _populate_from_object(self, ob: Object):
+    def _populate_from_object(self, ob: Object) -> None:
         pos = position_from_source_span(ob.source_span)
         self.db[pos] = ob
         for child in ob.children.values():
             self._populate_from_object(child)
+
+
+class IncrementalProject:
+    """
+    Unlike Project which builds information from a given project root,
+    IncrementalProject builds it in an online fashion. IncrementalProject
+    accepts a Python file and its full package name. Then it creates the module
+    for that file and inserts it into its database, patching parent and child pointers.
+    """
+
+    db: ObjectDb
+    kw_fns: ObjectDb
+    mod_db: dict[str, Module]
+
+    def __init__(self) -> None:
+        self.db = ObjectDb()
+        self.kw_fns = ObjectDb()
+        self.mod_db = {}
+
+    def add_file(self, path: str, fullname: str) -> None:
+        name_parts = fullname.split('.')
+        par_mod: Module | NoneType = None
+        mod_name = name_parts[-1]
+        if len(name_parts) > 1:
+            par_name = '.'.join(name_parts[:-1])
+            if par_name in self.mod_db:
+                par_mod = self.mod_db[par_name]
+
+        mod = mod_from_file(path, mod_name)
+        mod.parent = par_mod
+        if par_mod:
+            par_mod.children[mod.name] = mod
+
+        self.mod_db[fullname] = mod
+        new_obs = self._populate_from_object(mod)
+        self._find_kw_fns(new_obs)
+
+    def _populate_from_object(self, ob: Object) -> list[Tuple[Position, Object]]:
+        pos = position_from_source_span(ob.source_span)
+        self.db[pos] = ob
+        obs = [(pos, ob)]
+        for child in ob.children.values():
+            new_obs = self._populate_from_object(child)
+            obs.extend(new_obs)
+        return obs
+
+    def _find_kw_fns(self, obs: list[Tuple[Position, Object]]) -> None:
+        for pos, ob in obs:
+            if isinstance(ob, Function) and ob.has_kwargs_dict():
+                self.kw_fns[pos] = ob
