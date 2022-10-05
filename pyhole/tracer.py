@@ -86,3 +86,24 @@ class PrintTracer(Tracer):
             lineno = frame.f_lineno
             name = frame.f_code.co_name
             print("Executed {} at {}:{}".format(name, filename, lineno))
+
+
+class ExecTracer(Tracer):
+    def __init__(self):
+        super().__init__()
+
+    def trace_call(self, frame: FrameType):
+        if frame.f_code.co_filename != "sample.py":
+            return
+        print(frame)
+        glob = frame.f_globals
+        # glob = globals()
+        # print("Globals:", glob)
+        # print("global requests", "requests" in glob)
+        print("Globals: ", glob.keys())
+        # print(glob['root'] if 'root' in glob else None)
+        # loc = locals()
+        loc = frame.f_locals
+        # print("Locals:", loc)
+        # print("local requests", "requests" in loc)
+        print("Locals: ", loc.keys())
