@@ -55,12 +55,10 @@ class PyholeMetaPathFinder(abc.MetaPathFinder):
             else:
                 lg.warn('Loader returned for %s has no path', fullname)
 
-            # if isinstance(spec.loader, _frozen_importlib_external.SourceFileLoader):
-            #     spec.loader = PyholeSourceFileLoader(
-            #         spec.loader.name, spec.loader.path)
-            #     return spec
-            # else:
-            #     lg.warn('Unknown loader of type %s', str(type(spec.loader)))
+            if isinstance(spec.loader, _frozen_importlib_external.SourceFileLoader):
+                spec.loader = PyholeSourceFileLoader(
+                    spec.loader.name, spec.loader.path)
+                return spec
 
             return None
 
@@ -72,6 +70,14 @@ class PyholeSourceFileLoader(_frozen_importlib_external.SourceFileLoader):
     def exec_module(self, module):
         lg.debug("Source file loader loading: %s", self.path)
         super().exec_module(module)
+
+    def get_code(self, fullname):
+        lg.debug("Getting code for %s", self.path)
+        code = super().get_code(fullname)
+        lg.debug(code)
+        lg.debug(dir(code))
+        lg.debug(code.co_names)
+        return code
 
 
 class HookManager:
