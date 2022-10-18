@@ -101,9 +101,11 @@ class ExecTracer(Tracer):
         # print("Globals:", glob)
         # print("global requests", "requests" in glob)
         print("Globals: ", glob.keys())
+        print("Globals: ", glob.items())
         # print(glob['root'] if 'root' in glob else None)
         # loc = locals()
         loc = frame.f_locals
         # print("Locals:", loc)
         # print("local requests", "requests" in loc)
         print("Locals: ", loc.keys())
+        print("Locals values: ", loc.items())
