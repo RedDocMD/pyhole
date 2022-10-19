@@ -1,3 +1,4 @@
+from typing import Any
 from .tracer import Tracer
 from .db import ObjectDb, Position
 from .cache import FileCache
@@ -150,3 +151,68 @@ class SimpleKeywordTracer(Tracer):
                 self.aux_call_stack.pop()
                 if len(self.kwfn_stack) != 0 and self.kwfn_stack[-1] == call_ob:
                     self.kwfn_stack.pop()
+
+
+def name_from_expr(expr):
+    if isinstance(expr, str):
+        return expr
+    elif isinstance(expr, ast.Constant):
+        return name_from_expr(expr.value)
+    elif isinstance(expr, ast.Name):
+        return name_from_expr(expr.id)
+    else:
+        return lg.error("Unknown expr %s to find name", expr)
+
+
+def find_called_fn(expr: ast.Expression, loc: dict[str, Any], glob: dict[str, Any]):
+    match expr:
+        case ast.Name(id=idv):
+            # TODO: Check the expr_context
+            name = name_from_expr(idv)
+            if name in loc:
+                return loc[name]
+            elif name in glob:
+                return glob[name]
+            else:
+                lg.error("%s for Name not found in loc or glob", name)
+        case ast.Attribute(value=value, attr=attr):
+            name = name_from_expr(value)
+            if name in loc:
+                base = loc[name]
+            elif name in glob:
+                base = glob[name]
+            else:
+                lg.error("%s for Attribute not found in loc or glob", name)
+                return None
+            lg.debug("Base: %s", base)
+            pass
+    # lg.debug(expr)
+    return None
+
+
+class CallTracer(Tracer):
+    db: ObjectDb
+
+    def __init__(self, db: ObjectDb):
+        self.db = db
+
+    def trace_line(self, frame: FrameType):
+        pos = get_position(frame)
+        enc_ob = nearest_enclosing_function(pos, self.db)
+        ln = frame.f_lineno
+        if not enc_ob:
+            return
+        if ln not in enc_ob.stmts:
+            return
+        stmt = enc_ob.stmts[ln]
+        call_exprs = stmt_call_expressions(stmt)
+        if not call_exprs:
+            return
+        loc = frame.f_locals
+        glob = frame.f_globals
+        for call_expr in call_exprs:
+            called_fn = find_called_fn(call_expr.func, loc, glob)
+            if called_fn:
+                lg.debug(called_fn)
+            else:
+                lg.debug("called_fn not found")
