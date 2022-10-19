@@ -153,41 +153,74 @@ class SimpleKeywordTracer(Tracer):
                     self.kwfn_stack.pop()
 
 
-def name_from_expr(expr):
-    if isinstance(expr, str):
-        return expr
-    elif isinstance(expr, ast.Constant):
-        return name_from_expr(expr.value)
-    elif isinstance(expr, ast.Name):
-        return name_from_expr(expr.id)
+def split_attr_expr(expr: ast.Attribute):
+    parts = []
+    value = expr.value
+    if isinstance(value, ast.Name):
+        parts.append(value.id)
+    elif isinstance(value, ast.Constant):
+        return None
+    elif isinstance(value, ast.Attribute):
+        others = split_attr_expr(value)
+        if others is None:
+            return None
+        parts.extend(others)
     else:
-        return lg.error("Unknown expr %s to find name", expr)
+        raise RuntimeError(f"Got {value} as value for ast.Attribute")
+    parts.append(expr.attr)
+    return parts
 
 
-def find_called_fn(expr: ast.Expression, loc: dict[str, Any], glob: dict[str, Any]):
+class SymbolTable:
+    loc: dict[str, Any]
+    glob: dict[str, Any]
+    builtins: dict[str, Any]
+
+    LOC: str = 'Local'
+    GLOB: str = 'Global'
+    BUILTIN: str = 'Builtin'
+    NOT_FOUND: str = 'NotFound'
+    ON_CONSTANT: str = 'OnConstant'
+
+    def __init__(self, loc: dict[str, Any], glob: dict[str, Any], builtins: dict[str, Any]):
+        self.loc = loc
+        self.glob = glob
+        self.builtins = builtins
+
+    def lookup(self, name: str):
+        if name in self.loc:
+            return self.loc[name], SymbolTable.LOC
+        elif name in self.glob:
+            return self.glob[name], SymbolTable.GLOB
+        elif name in self.builtins:
+            return self.builtins[name], SymbolTable.BUILTIN
+        else:
+            return None, SymbolTable.NOT_FOUND
+
+
+def find_called_fn(expr: ast.Expression, sym_tab: SymbolTable):
     match expr:
-        case ast.Name(id=idv):
+        case ast.Name(id=name):
             # TODO: Check the expr_context
-            name = name_from_expr(idv)
-            if name in loc:
-                return loc[name]
-            elif name in glob:
-                return glob[name]
-            else:
+            fn, kind = sym_tab.lookup(name)
+            if not fn:
                 lg.error("%s for Name not found in loc or glob", name)
+            return fn, kind
         case ast.Attribute(value=value, attr=attr):
-            name = name_from_expr(value)
-            if name in loc:
-                base = loc[name]
-            elif name in glob:
-                base = glob[name]
-            else:
-                lg.error("%s for Attribute not found in loc or glob", name)
-                return None
+            # TODO: Check the expr_context
+            parts = split_attr_expr(expr)
+            if parts is None:
+                return None, SymbolTable.ON_CONSTANT
+            name = parts[0]
+            base, _ = sym_tab.lookup(name)
+            if not base:
+                lg.error(
+                    "%s for Attribute not found in loc or glob %s", name, parts)
+                return None, SymbolTable.NOT_FOUND
             lg.debug("Base: %s", base)
             pass
     # lg.debug(expr)
-    return None
+    return None, SymbolTable.NOT_FOUND
 
 
 class CallTracer(Tracer):
@@ -208,11 +241,11 @@ class CallTracer(Tracer):
         call_exprs = stmt_call_expressions(stmt)
         if not call_exprs:
             return
-        loc = frame.f_locals
-        glob = frame.f_globals
+        sym_tab = SymbolTable(
+            frame.f_locals, frame.f_globals, frame.f_builtins)
         for call_expr in call_exprs:
-            called_fn = find_called_fn(call_expr.func, loc, glob)
-            if called_fn:
+            called_fn, kind = find_called_fn(call_expr.func, sym_tab)
+            if called_fn and kind != SymbolTable.BUILTIN:
                 lg.debug(called_fn)
-            else:
-                lg.debug("called_fn not found")
+            elif kind != SymbolTable.ON_CONSTANT:
+                lg.debug("called_fn not found at %s", pos)
