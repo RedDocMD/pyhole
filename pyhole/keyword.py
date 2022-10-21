@@ -6,7 +6,7 @@ from .object import Function
 import ast
 from termcolor import colored
 import logging as lg
-from types import FrameType
+from types import FrameType, ModuleType
 import enum
 
 
@@ -164,6 +164,10 @@ def split_attr_expr(expr: ast.Attribute):
     elif isinstance(value, ast.Attribute):
         others = split_attr_expr(value)
         parts.extend(others)
+    elif isinstance(value, ast.Call):
+        parts.append(value)
+    elif isinstance(value, ast.Subscript):
+        parts.append(value)
     else:
         raise RuntimeError(f"Got {value} as value for ast.Attribute")
     parts.append(expr.attr)
@@ -175,7 +179,7 @@ class FunctionType(enum.Enum):
     GLOB = 1
     BUILTIN = 2
     NOT_FOUND = 3
-    ON_CONSTANT = 4
+    UNKNOWN = 4
 
 
 class SymbolType(enum.Enum):
@@ -184,7 +188,7 @@ class SymbolType(enum.Enum):
     BUILTIN = 2
     NOT_FOUND = 3
 
-    def to_symbol_type(self) -> FunctionType:
+    def to_function_type(self) -> FunctionType:
         match self:
             case SymbolType.LOC:
                 return FunctionType.LOC
@@ -220,6 +224,13 @@ class SymbolTable:
         return f'locals = {self.loc.keys()}\nglobals = {self.glob.keys()}\nbuiltins = {self.builtins.keys()}'
 
 
+def lookup_fn(ob: Any, names: list[str]) -> Any:
+    thing = getattr(ob, names[0])
+    if len(names) == 1:
+        return thing
+    return lookup_fn(thing, names[1:])
+
+
 def find_called_fn(expr: ast.Expression, sym_tab: SymbolTable) -> Tuple[Any, FunctionType]:
     match expr:
         case ast.Name(id=name):
@@ -227,21 +238,21 @@ def find_called_fn(expr: ast.Expression, sym_tab: SymbolTable) -> Tuple[Any, Fun
             fn, kind = sym_tab.lookup(name)
             if not fn:
                 lg.error("%s for Name not found in loc or glob", name)
-            return fn, kind.to_symbol_type()
+            return fn, kind.to_function_type()
         case ast.Attribute(value=value, attr=attr):
             # TODO: Check the expr_context
             parts = split_attr_expr(expr)
+            for part in parts:
+                if not isinstance(part, str):
+                    return None, FunctionType.UNKNOWN
             name = parts[0]
-            if isinstance(name, ast.Constant):
-                return None, FunctionType.ON_CONSTANT
-            base, _ = sym_tab.lookup(name)
+            base, kind = sym_tab.lookup(name)
             if base is None:
                 lg.error(
                     "%s for Attribute not found in symbol table %s", name, parts)
                 return None, FunctionType.NOT_FOUND
-            lg.debug("Base: %s", base)
-            pass
-    # lg.debug(expr)
+            fn = lookup_fn(base, parts[1:])
+            return fn, kind.to_function_type()
     return None, FunctionType.NOT_FOUND
 
 
@@ -269,6 +280,6 @@ class CallTracer(Tracer):
             # lg.debug(pos)
             called_fn, kind = find_called_fn(call_expr.func, sym_tab)
             if called_fn is not None and kind != FunctionType.BUILTIN:
-                lg.debug(called_fn)
-            elif called_fn is None and kind != FunctionType.ON_CONSTANT:
-                lg.debug("called_fn not found at %s", pos)
+                lg.info(called_fn)
+            elif called_fn is None and kind != FunctionType.UNKNOWN:
+                lg.error("called_fn not found at %s", pos)
