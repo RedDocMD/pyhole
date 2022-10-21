@@ -297,6 +297,9 @@ class CallTracer(Tracer):
             called_fn, kind = resolve_function(
                 *find_called_fn(call_expr.func, sym_tab))
             if called_fn is not None and kind != FunctionKind.BUILTIN:
-                lg.info(called_fn)
+                fn_ob = self.db.lookup_fn(called_fn)
+                if fn_ob:
+                    lg.info(called_fn)
+                    lg.info(fn_ob)
             elif called_fn is None and kind != FunctionKind.UNKNOWN:
                 lg.error("called_fn not found at %s", pos)

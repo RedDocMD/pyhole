@@ -1,6 +1,7 @@
+from types import FunctionType, MethodType, NoneType
 from .object import Object, Function
 from pathlib import PurePath
-from typing import Tuple
+from typing import Tuple, Union
 
 
 class Position:
@@ -72,3 +73,13 @@ class ObjectDb:
             sorted(file_fn_obs, key=lambda x: x[0], reverse=True))
         self.file_fn_db[filename] = file_fn_obs
         return file_fn_obs
+
+    def lookup_fn(self, fn: Union[FunctionType, MethodType]) -> Union[Object, NoneType]:
+        if not hasattr(fn, "__code__"):
+            return None
+        code = fn.__code__
+        pos = Position(code.co_filename, code.co_firstlineno)
+        if pos in self.db:
+            return self.db[pos]
+        else:
+            return None
