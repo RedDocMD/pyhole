@@ -1,3 +1,4 @@
+from inspect import isbuiltin, isclass, isfunction, ismethod
 from typing import Any, Tuple
 from .tracer import Tracer
 from .db import ObjectDb, Position
@@ -6,7 +7,7 @@ from .object import Function
 import ast
 from termcolor import colored
 import logging as lg
-from types import FrameType, ModuleType
+from types import FrameType
 import enum
 
 
@@ -174,7 +175,7 @@ def split_attr_expr(expr: ast.Attribute):
     return parts
 
 
-class FunctionType(enum.Enum):
+class FunctionKind(enum.Enum):
     LOC = 0
     GLOB = 1
     BUILTIN = 2
@@ -182,22 +183,22 @@ class FunctionType(enum.Enum):
     UNKNOWN = 4
 
 
-class SymbolType(enum.Enum):
+class SymbolKind(enum.Enum):
     LOC = 0
     GLOB = 1
     BUILTIN = 2
     NOT_FOUND = 3
 
-    def to_function_type(self) -> FunctionType:
+    def to_function_type(self) -> FunctionKind:
         match self:
-            case SymbolType.LOC:
-                return FunctionType.LOC
-            case SymbolType.GLOB:
-                return FunctionType.GLOB
-            case SymbolType.BUILTIN:
-                return FunctionType.BUILTIN
-            case SymbolType.NOT_FOUND:
-                return FunctionType.NOT_FOUND
+            case SymbolKind.LOC:
+                return FunctionKind.LOC
+            case SymbolKind.GLOB:
+                return FunctionKind.GLOB
+            case SymbolKind.BUILTIN:
+                return FunctionKind.BUILTIN
+            case SymbolKind.NOT_FOUND:
+                return FunctionKind.NOT_FOUND
 
 
 class SymbolTable:
@@ -210,15 +211,15 @@ class SymbolTable:
         self.glob = glob
         self.builtins = builtins
 
-    def lookup(self, name: str) -> Tuple[Any, SymbolType]:
+    def lookup(self, name: str) -> Tuple[Any, SymbolKind]:
         if name in self.loc:
-            return self.loc[name], SymbolType.LOC
+            return self.loc[name], SymbolKind.LOC
         elif name in self.glob:
-            return self.glob[name], SymbolType.GLOB
+            return self.glob[name], SymbolKind.GLOB
         elif name in self.builtins:
-            return self.builtins[name], SymbolType.BUILTIN
+            return self.builtins[name], SymbolKind.BUILTIN
         else:
-            return None, SymbolType.NOT_FOUND
+            return None, SymbolKind.NOT_FOUND
 
     def __str__(self) -> str:
         return f'locals = {self.loc.keys()}\nglobals = {self.glob.keys()}\nbuiltins = {self.builtins.keys()}'
@@ -231,7 +232,7 @@ def lookup_fn(ob: Any, names: list[str]) -> Any:
     return lookup_fn(thing, names[1:])
 
 
-def find_called_fn(expr: ast.Expression, sym_tab: SymbolTable) -> Tuple[Any, FunctionType]:
+def find_called_fn(expr: ast.Expression, sym_tab: SymbolTable) -> Tuple[Any, FunctionKind]:
     match expr:
         case ast.Name(id=name):
             # TODO: Check the expr_context
@@ -244,16 +245,31 @@ def find_called_fn(expr: ast.Expression, sym_tab: SymbolTable) -> Tuple[Any, Fun
             parts = split_attr_expr(expr)
             for part in parts:
                 if not isinstance(part, str):
-                    return None, FunctionType.UNKNOWN
+                    return None, FunctionKind.UNKNOWN
             name = parts[0]
             base, kind = sym_tab.lookup(name)
             if base is None:
                 lg.error(
                     "%s for Attribute not found in symbol table %s", name, parts)
-                return None, FunctionType.NOT_FOUND
+                return None, FunctionKind.NOT_FOUND
             fn = lookup_fn(base, parts[1:])
             return fn, kind.to_function_type()
-    return None, FunctionType.NOT_FOUND
+    return None, FunctionKind.NOT_FOUND
+
+
+def resolve_function(fn, kind):
+    if fn is None:
+        return None, kind
+    if isclass(fn):
+        dc = fn.__dict__
+        if "__init__" in dc:
+            return dc["__init__"], kind
+        return None, FunctionKind.UNKNOWN
+    if isbuiltin(fn):
+        return fn, FunctionKind.BUILTIN
+    if not isfunction(fn) and not ismethod(fn):
+        raise RuntimeError(f"{fn} was expected to be a function")
+    return fn, kind
 
 
 class CallTracer(Tracer):
@@ -278,8 +294,9 @@ class CallTracer(Tracer):
             frame.f_locals, frame.f_globals, frame.f_builtins)
         for call_expr in call_exprs:
             # lg.debug(pos)
-            called_fn, kind = find_called_fn(call_expr.func, sym_tab)
-            if called_fn is not None and kind != FunctionType.BUILTIN:
+            called_fn, kind = resolve_function(
+                *find_called_fn(call_expr.func, sym_tab))
+            if called_fn is not None and kind != FunctionKind.BUILTIN:
                 lg.info(called_fn)
-            elif called_fn is None and kind != FunctionType.UNKNOWN:
+            elif called_fn is None and kind != FunctionKind.UNKNOWN:
                 lg.error("called_fn not found at %s", pos)
