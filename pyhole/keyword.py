@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Tuple
 from .tracer import Tracer
 from .db import ObjectDb, Position
 from .cache import FileCache
@@ -7,6 +7,7 @@ import ast
 from termcolor import colored
 import logging as lg
 from types import FrameType
+import enum
 
 
 fun_txt = colored("Fun", 'grey', 'on_white')
@@ -159,11 +160,9 @@ def split_attr_expr(expr: ast.Attribute):
     if isinstance(value, ast.Name):
         parts.append(value.id)
     elif isinstance(value, ast.Constant):
-        return None
+        parts.append(value)
     elif isinstance(value, ast.Attribute):
         others = split_attr_expr(value)
-        if others is None:
-            return None
         parts.extend(others)
     else:
         raise RuntimeError(f"Got {value} as value for ast.Attribute")
@@ -171,56 +170,79 @@ def split_attr_expr(expr: ast.Attribute):
     return parts
 
 
+class FunctionType(enum.Enum):
+    LOC = 0
+    GLOB = 1
+    BUILTIN = 2
+    NOT_FOUND = 3
+    ON_CONSTANT = 4
+
+
+class SymbolType(enum.Enum):
+    LOC = 0
+    GLOB = 1
+    BUILTIN = 2
+    NOT_FOUND = 3
+
+    def to_symbol_type(self) -> FunctionType:
+        match self:
+            case SymbolType.LOC:
+                return FunctionType.LOC
+            case SymbolType.GLOB:
+                return FunctionType.GLOB
+            case SymbolType.BUILTIN:
+                return FunctionType.BUILTIN
+            case SymbolType.NOT_FOUND:
+                return FunctionType.NOT_FOUND
+
+
 class SymbolTable:
     loc: dict[str, Any]
     glob: dict[str, Any]
     builtins: dict[str, Any]
-
-    LOC: str = 'Local'
-    GLOB: str = 'Global'
-    BUILTIN: str = 'Builtin'
-    NOT_FOUND: str = 'NotFound'
-    ON_CONSTANT: str = 'OnConstant'
 
     def __init__(self, loc: dict[str, Any], glob: dict[str, Any], builtins: dict[str, Any]):
         self.loc = loc
         self.glob = glob
         self.builtins = builtins
 
-    def lookup(self, name: str):
+    def lookup(self, name: str) -> Tuple[Any, SymbolType]:
         if name in self.loc:
-            return self.loc[name], SymbolTable.LOC
+            return self.loc[name], SymbolType.LOC
         elif name in self.glob:
-            return self.glob[name], SymbolTable.GLOB
+            return self.glob[name], SymbolType.GLOB
         elif name in self.builtins:
-            return self.builtins[name], SymbolTable.BUILTIN
+            return self.builtins[name], SymbolType.BUILTIN
         else:
-            return None, SymbolTable.NOT_FOUND
+            return None, SymbolType.NOT_FOUND
+
+    def __str__(self) -> str:
+        return f'locals = {self.loc.keys()}\nglobals = {self.glob.keys()}\nbuiltins = {self.builtins.keys()}'
 
 
-def find_called_fn(expr: ast.Expression, sym_tab: SymbolTable):
+def find_called_fn(expr: ast.Expression, sym_tab: SymbolTable) -> Tuple[Any, FunctionType]:
     match expr:
         case ast.Name(id=name):
             # TODO: Check the expr_context
             fn, kind = sym_tab.lookup(name)
             if not fn:
                 lg.error("%s for Name not found in loc or glob", name)
-            return fn, kind
+            return fn, kind.to_symbol_type()
         case ast.Attribute(value=value, attr=attr):
             # TODO: Check the expr_context
             parts = split_attr_expr(expr)
-            if parts is None:
-                return None, SymbolTable.ON_CONSTANT
             name = parts[0]
+            if isinstance(name, ast.Constant):
+                return None, FunctionType.ON_CONSTANT
             base, _ = sym_tab.lookup(name)
-            if not base:
+            if base is None:
                 lg.error(
-                    "%s for Attribute not found in loc or glob %s", name, parts)
-                return None, SymbolTable.NOT_FOUND
+                    "%s for Attribute not found in symbol table %s", name, parts)
+                return None, FunctionType.NOT_FOUND
             lg.debug("Base: %s", base)
             pass
     # lg.debug(expr)
-    return None, SymbolTable.NOT_FOUND
+    return None, FunctionType.NOT_FOUND
 
 
 class CallTracer(Tracer):
@@ -244,8 +266,9 @@ class CallTracer(Tracer):
         sym_tab = SymbolTable(
             frame.f_locals, frame.f_globals, frame.f_builtins)
         for call_expr in call_exprs:
+            # lg.debug(pos)
             called_fn, kind = find_called_fn(call_expr.func, sym_tab)
-            if called_fn and kind != SymbolTable.BUILTIN:
+            if called_fn is not None and kind != FunctionType.BUILTIN:
                 lg.debug(called_fn)
-            elif kind != SymbolTable.ON_CONSTANT:
+            elif called_fn is None and kind != FunctionType.ON_CONSTANT:
                 lg.debug("called_fn not found at %s", pos)
