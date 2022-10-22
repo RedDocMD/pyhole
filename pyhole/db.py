@@ -62,6 +62,9 @@ class ObjectDb:
     def items(self):
         return self.db.items()
 
+    def has_ob(self, ob: Object) -> bool:
+        return ob in self.db.values()
+
     def file_fn_obs(self, filename: str):
         if filename in self.file_fn_db:
             return self.file_fn_db[filename]

@@ -15,7 +15,7 @@ if __name__ == "__main__":
     project = Project(root)
     # for thing in project.db:
     #     print(thing, project.db[thing])
-    tracer = CallTracer(project.db)
+    tracer = CallTracer(project.db, project.kw_fns)
     code_str = """
 import requests
 def sample_func():

@@ -1,3 +1,4 @@
+import enum
 from pathlib import PurePath
 from typing import Any, Union
 from types import NoneType
@@ -143,6 +144,27 @@ class Class(Object):
         return "class {}".format(self.name)
 
 
+def arg_names(args: list[ast.arg]) -> list[str]:
+    return list(map(lambda arg: arg.arg, args))
+
+
+class FormalParamKind(enum.Enum):
+    POSONLY = 0
+    NORMAL = 1
+    KWONLY = 2
+
+
+class FormalParam:
+    name: str
+    has_default: bool
+    kind: FormalParamKind
+
+    def __init__(self, name: str, has_default: bool, kind: FormalParamKind) -> None:
+        self.name = name
+        self.has_default = has_default
+        self.kind = kind
+
+
 class Function(Object):
     args: ast.arguments
 
@@ -160,6 +182,33 @@ class Function(Object):
 
     def has_kwargs_dict(self) -> bool:
         return self.args.kwarg is not None
+
+    def get_kwargs_name(self) -> str:
+        if not self.has_kwargs_dict():
+            raise RuntimeError(f"{self} has not keyword arguments")
+        return self.args.kwarg.arg
+
+    def get_formal_params(self) -> list[FormalParam]:
+        posonly = arg_names(self.args.posonlyargs)
+        normal = arg_names(self.args.args)
+        kwonly = arg_names(self.args.kwonlyargs)
+
+        def_cnt = len(self.args.defaults)
+        norm_def_cnt = min(len(normal), def_cnt)
+        posonly_def_cnt = min(len(posonly), def_cnt - norm_def_cnt)
+
+        params = []
+        for i, arg in enumerate(posonly):
+            has_def = i >= (len(posonly) - posonly_def_cnt)
+            params.append(FormalParam(arg, has_def, FormalParamKind.POSONLY))
+        for i, arg in enumerate(normal):
+            has_def = i >= (len(normal) - norm_def_cnt)
+            params.append(FormalParam(arg, has_def, FormalParamKind.NORMAL))
+        for arg, def_val in zip(kwonly, self.args.kw_defaults):
+            params.append(FormalParam(
+                arg, def_val is not None, FormalParamKind.KWONLY))
+
+        return params
 
     def ob_type(self) -> str:
         return "func"

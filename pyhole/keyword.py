@@ -1,9 +1,10 @@
 from inspect import isbuiltin, isclass, isfunction, ismethod
+from itertools import chain
 from typing import Any, Tuple
 from .tracer import Tracer
 from .db import ObjectDb, Position
 from .cache import FileCache
-from .object import Function
+from .object import FormalParamKind, Function
 import ast
 from termcolor import colored
 import logging as lg
@@ -272,11 +273,108 @@ def resolve_function(fn, kind):
     return fn, kind
 
 
+class KeywordValKind(enum.Enum):
+    PARENT = 0
+    CHILD = 1
+
+    def __str__(self) -> str:
+        match self:
+            case KeywordValKind.PARENT:
+                return "PARENT"
+            case KeywordValKind.CHILD:
+                return "CHILD"
+
+
+class KeywordVal:
+    kind: KeywordValKind
+    name: str
+
+    def __init__(self, kind: KeywordValKind, name: str) -> None:
+        self.kind = kind
+        self.name = name
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.kind})"
+
+
 class CallTracer(Tracer):
     db: ObjectDb
+    kw_fns: ObjectDb
 
-    def __init__(self, db: ObjectDb):
+    def __init__(self, db: ObjectDb, kw_fns: ObjectDb) -> None:
         self.db = db
+        self.kw_fns = kw_fns
+
+    def _find_keyword_params(self,
+                             par_fn: Function,
+                             child_fn: Function,
+                             call_expr: ast.Call) -> list[KeywordVal]:
+        par_has_kw = self.kw_fns.has_ob(par_fn)
+        child_has_kw = self.kw_fns.has_ob(child_fn)
+
+        res: list[KeywordVal] = []
+
+        params = child_fn.get_formal_params()
+        posonly_params = list(
+            filter(lambda param: param.kind == FormalParamKind.POSONLY, params))
+        norm_params = list(
+            filter(lambda param: param.kind == FormalParamKind.NORMAL, params))
+        kwonly_params = list(
+            filter(lambda param: param.kind == FormalParamKind.KWONLY, params))
+
+        # Figure out child kw
+        if child_has_kw:
+            kwds = call_expr.keywords
+            param_names = list(
+                filter(lambda param: param.name, norm_params + kwonly_params))
+            for kwd in kwds:
+                name = kwd.arg
+                if name and name not in param_names:
+                    res.append(KeywordVal(KeywordValKind.CHILD, name))
+                # TODO: Extract information from the fun(**args) case.
+
+        # Figure out par kw
+        if par_has_kw:
+            par_kw_name = par_fn.get_kwargs_name()
+            kwds = call_expr.keywords
+            args = call_expr.args
+
+            targ_kwd_found = False
+            star_pos_found = False
+            for kwd in kwds:
+                if not kwd.arg and isinstance(kwd.value, ast.Name) and kwd.value.id == par_kw_name:
+                    targ_kwd_found = True
+                    break
+            for arg in args:
+                if isinstance(arg, ast.Starred):
+                    star_pos_found = True
+                    break
+
+            if targ_kwd_found:
+                kwds_covered = list(map(lambda kwd: kwd.arg,
+                                        filter(lambda kwd: kwd.arg, kwds)))
+
+                if not star_pos_found:
+                    pos_covered_cnt = len(args)
+                else:
+                    pos_covered_cnt = len(posonly_params) + len(norm_params)
+
+                # First remove all positional params
+                norm_params_covered = max(0, min(
+                    len(norm_params), pos_covered_cnt - len(posonly_params)))
+                # Then remove all normal params with default values or is in kwds_covered
+                norm_params_left = list(
+                    filter(lambda param: not param.has_default or param.name not in kwds_covered,
+                           norm_params[norm_params_covered:]))
+                # Find kwonly args that have not been covered
+                kwonly_params_left = list(
+                    filter(lambda param: param.name not in kwds_covered, kwonly_params))
+
+                # That all must be accounted for by **kwargs
+                for param in chain(norm_params_left, kwonly_params_left):
+                    res.append(KeywordVal(KeywordValKind.PARENT, param.name))
+
+        return res
 
     def trace_line(self, frame: FrameType):
         pos = get_position(frame)
@@ -293,13 +391,14 @@ class CallTracer(Tracer):
         sym_tab = SymbolTable(
             frame.f_locals, frame.f_globals, frame.f_builtins)
         for call_expr in call_exprs:
-            # lg.debug(pos)
             called_fn, kind = resolve_function(
                 *find_called_fn(call_expr.func, sym_tab))
             if called_fn is not None and kind != FunctionKind.BUILTIN:
                 fn_ob = self.db.lookup_fn(called_fn)
                 if fn_ob:
-                    lg.info(called_fn)
-                    lg.info(fn_ob)
+                    lg.info("Parent: %s", enc_ob)
+                    lg.info("Child: %s", fn_ob)
+                    kwds = self._find_keyword_params(enc_ob, fn_ob, call_expr)
+                    lg.info("Kwds: [%s]", ', '.join(map(str, kwds)))
             elif called_fn is None and kind != FunctionKind.UNKNOWN:
                 lg.error("called_fn not found at %s", pos)
