@@ -19,7 +19,9 @@ class TestCase:
         self.fn_globals = fn_globals
 
     def exec(self) -> None:
-        tracer.start_tracing()
+        global tracer
+
+        tracer.enable_tracing()
         exec(self.code, self.fn_globals)
         tracer.disable_tracing()
 
@@ -28,11 +30,15 @@ test_cases: list[TestCase] = []
 
 
 def test_case(fn: FunctionType) -> None:
+    global test_cases
+
     case = TestCase(fn.__code__, fn.__globals__)
     test_cases.append(case)
 
 
 def exec_cases() -> None:
+    global tracer, test_cases, projects, kwd_db
+
     if not tracer:
         dbs = list(map(lambda x: x.db, projects))
         kw_fns = list(map(lambda x: x.kw_fns, projects))
@@ -42,8 +48,12 @@ def exec_cases() -> None:
 
 
 def add_project(project: Project) -> None:
+    global projects
+
     projects.append(project)
 
 
 def get_kwd_db() -> KeywordDb:
+    global kwd_db
+
     return kwd_db
