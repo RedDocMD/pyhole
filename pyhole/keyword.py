@@ -298,7 +298,7 @@ class KeywordVal:
 
 
 class CallTracer(Tracer):
-    db: list[ObjectDb]
+    dbs: list[ObjectDb]
     kw_fns: list[ObjectDb]
     kwd_db: KeywordDb
 
@@ -325,12 +325,18 @@ class CallTracer(Tracer):
                 return out
         return None
 
-    # FIXME: Use the Frame object and Code object to find this out
-    def _nearest_enc_fn(self, pos: Position) -> Function | NoneType:
+    def _enc_ob_pos(self, frame: FrameType) -> Position:
+        filename = frame.f_code.co_filename
+        lineno = frame.f_code.co_firstlineno
+        return Position(filename, lineno)
+
+    def _enc_fn(self, frame: FrameType) -> Function | NoneType:
+        pos = self._enc_ob_pos(frame)
         for db in self.dbs:
-            fn = nearest_enclosing_function(pos, db)
-            if fn:
-                return fn
+            if pos in db:
+                ob = db[pos]
+                if isinstance(ob, Function):
+                    return ob
         return None
 
     def _find_keyword_params(self,
@@ -406,8 +412,7 @@ class CallTracer(Tracer):
         return res
 
     def trace_line(self, frame: FrameType):
-        pos = get_position(frame)
-        enc_ob = self._nearest_enc_fn(pos)
+        enc_ob = self._enc_fn(frame)
         ln = frame.f_lineno
         if not enc_ob:
             return
@@ -435,4 +440,5 @@ class CallTracer(Tracer):
                         fn = enc_ob if kwd.kind == KeywordValKind.PARENT else fn_ob
                         self.kwd_db.append_possibility(fn, kwd.name)
             elif called_fn is None and kind != FunctionKind.UNKNOWN:
+                pos = get_position(frame)
                 lg.error("called_fn not found at %s", pos)
