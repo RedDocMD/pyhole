@@ -62,6 +62,9 @@ class ObjectDb:
     def items(self):
         return self.db.items()
 
+    def values(self):
+        return self.db.values()
+
     def has_ob(self, ob: Object) -> bool:
         return ob in self.db.values()
 
@@ -103,3 +106,6 @@ class KeywordDb:
 
     def __str__(self) -> str:
         return str(self.db)
+
+    def items(self):
+        return self.db.items()
