@@ -2,7 +2,7 @@
 - [ ] Fix statment extraction to cover all nodes
 - [ ] Fix call extraction to cover all nodes
 - [x] Ensure actual keyword arguments are printed
-- [ ] Create decorator to automatically start and stop tracer at 
+- [x] Create decorator to automatically start and stop tracer at 
 beginning and end of function
 - [x] Accumulate keyword arguments over test cases
 - [ ] Cover dictionary accesses

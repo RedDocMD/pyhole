@@ -1,6 +1,6 @@
 from inspect import isbuiltin, isclass, isfunction, ismethod
 from itertools import chain
-from typing import Any, Tuple
+from typing import Any, Tuple, Union
 from .tracer import Tracer
 from .db import KeywordDb, ObjectDb, Position
 from .cache import FileCache
@@ -8,7 +8,7 @@ from .object import FormalParamKind, Function
 import ast
 from termcolor import colored
 import logging as lg
-from types import FrameType
+from types import FrameType, FunctionType, MethodType, NoneType
 import enum
 
 
@@ -298,21 +298,47 @@ class KeywordVal:
 
 
 class CallTracer(Tracer):
-    db: ObjectDb
-    kw_fns: ObjectDb
+    db: list[ObjectDb]
+    kw_fns: list[ObjectDb]
     kwd_db: KeywordDb
 
-    def __init__(self, db: ObjectDb, kw_fns: ObjectDb, kwd_db: KeywordDb) -> None:
-        self.db = db
-        self.kw_fns = kw_fns
+    def __init__(self, dbs: ObjectDb | list[ObjectDb],
+                 kw_fns: ObjectDb | list[ObjectDb],
+                 kwd_db: KeywordDb) -> None:
+        if not isinstance(dbs, list):
+            self.dbs = [dbs]
+        else:
+            self.dbs = dbs
+        if not isinstance(kw_fns, list):
+            self.kw_fns = [kw_fns]
+        else:
+            self.kw_fns = kw_fns
         self.kwd_db = kwd_db
+
+    def _is_kwd_fn(self, fn: Function) -> bool:
+        return any(map(lambda dt: dt.has_ob(fn), self.kw_fns))
+
+    def _lookup_fn(self, fn: Union[FunctionType, MethodType]) -> Function | NoneType:
+        for db in self.dbs:
+            out = db.lookup_fn(fn)
+            if out:
+                return out
+        return None
+
+    # FIXME: Use the Frame object and Code object to find this out
+    def _nearest_enc_fn(self, pos: Position) -> Function | NoneType:
+        for db in self.dbs:
+            fn = nearest_enclosing_function(pos, db)
+            if fn:
+                return fn
+        return None
 
     def _find_keyword_params(self,
                              par_fn: Function,
                              child_fn: Function,
                              call_expr: ast.Call) -> list[KeywordVal]:
-        par_has_kw = self.kw_fns.has_ob(par_fn)
-        child_has_kw = self.kw_fns.has_ob(child_fn)
+        par_has_kw = self._is_kwd_fn(par_fn)
+        child_has_kw = self._is_kwd_fn(child_fn)
 
         res: list[KeywordVal] = []
 
@@ -381,7 +407,7 @@ class CallTracer(Tracer):
 
     def trace_line(self, frame: FrameType):
         pos = get_position(frame)
-        enc_ob = nearest_enclosing_function(pos, self.db)
+        enc_ob = self._nearest_enc_fn(pos)
         ln = frame.f_lineno
         if not enc_ob:
             return
@@ -397,7 +423,7 @@ class CallTracer(Tracer):
             called_fn, kind = resolve_function(
                 *find_called_fn(call_expr.func, sym_tab))
             if called_fn is not None and kind != FunctionKind.BUILTIN:
-                fn_ob = self.db.lookup_fn(called_fn)
+                fn_ob = self._lookup_fn(called_fn)
                 if fn_ob:
                     lg.info("Parent: %s", enc_ob)
                     lg.info("Child: %s", fn_ob)
