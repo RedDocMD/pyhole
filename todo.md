@@ -9,3 +9,4 @@ beginning and end of function
 - [ ] Add code to resolve import paths directly
 - [ ] Cover dictionary mutations
 - [ ] Cover C native functions
+- [ ] Add strict mode to restrict to exact keyword arguments

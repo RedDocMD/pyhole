@@ -154,6 +154,15 @@ class FormalParamKind(enum.Enum):
     NORMAL = 1
     KWONLY = 2
 
+    def __str__(self) -> str:
+        match self:
+            case FormalParamKind.POSONLY:
+                return "POSONLY"
+            case FormalParamKind.NORMAL:
+                return "NORMAL"
+            case FormalParamKind.KWONLY:
+                return "KWONLY"
+
 
 class FormalParam:
     name: str
@@ -164,6 +173,9 @@ class FormalParam:
         self.name = name
         self.has_default = has_default
         self.kind = kind
+
+    def __str__(self) -> str:
+        return 'FormalParam{{name={}, has_default={}, kind={}}}'.format(self.name, self.has_default, self.kind)
 
 
 class Function(Object):

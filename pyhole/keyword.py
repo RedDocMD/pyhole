@@ -320,7 +320,7 @@ class CallTracer(Tracer):
         posonly_params = list(
             filter(lambda param: param.kind == FormalParamKind.POSONLY, params))
         norm_params = list(
-            filter(lambda param: param.kind == FormalParamKind.NORMAL, params))
+            filter(lambda param: param.kind == FormalParamKind.NORMAL and param.name != "self", params))
         kwonly_params = list(
             filter(lambda param: param.kind == FormalParamKind.KWONLY, params))
 
@@ -365,8 +365,9 @@ class CallTracer(Tracer):
                 norm_params_covered = max(0, min(
                     len(norm_params), pos_covered_cnt - len(posonly_params)))
                 # Then remove all normal params with default values or is in kwds_covered
+                # TODO: Strict mode for required keyword arguments
                 norm_params_left = list(
-                    filter(lambda param: not param.has_default or param.name not in kwds_covered,
+                    filter(lambda param: param.name not in kwds_covered,
                            norm_params[norm_params_covered:]))
                 # Find kwonly args that have not been covered
                 kwonly_params_left = list(
@@ -400,6 +401,8 @@ class CallTracer(Tracer):
                 if fn_ob:
                     lg.info("Parent: %s", enc_ob)
                     lg.info("Child: %s", fn_ob)
+                    lg.info("Kwd args: %s",
+                            list(map(lambda arg: arg.arg, call_expr.keywords)))
                     kwds = self._find_keyword_params(enc_ob, fn_ob, call_expr)
                     lg.info("Kwds: [%s]", ', '.join(map(str, kwds)))
                     for kwd in kwds:

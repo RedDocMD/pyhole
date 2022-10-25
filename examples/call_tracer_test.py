@@ -9,13 +9,11 @@ import logging
 
 if __name__ == "__main__":
     logging.basicConfig(format='%(levelname)s: %(message)s',
-                        level=logging.INFO)
+                        level=logging.WARNING)
     cwd = Path.cwd()
     # Run from project root
     root = cwd / ".venv" / "lib" / "python3.10" / "site-packages" / "requests"
     project = Project(root)
-    # for thing in project.db:
-    #     print(thing, project.db[thing])
     kwd_db = KeywordDb()
     tracer = CallTracer(project.db, project.kw_fns, kwd_db)
     code_str = """
