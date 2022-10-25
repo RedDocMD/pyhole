@@ -74,6 +74,7 @@ class Object:
         while obj is not None:
             path.append_part(obj.name)
             obj = obj.parent
+        path.components = list(reversed(path.components))
         return path
 
     def append_child(self, name: str, child: "Object") -> None:
@@ -240,7 +241,7 @@ class Function(Object):
         return out
 
     def __str__(self) -> str:
-        return "function {}({})".format(self.name, self._format_args())
+        return "function {}({})".format(self.full_path(), self._format_args())
 
 
 def extract_statements_from_body(body):

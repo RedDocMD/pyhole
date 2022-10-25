@@ -86,3 +86,20 @@ class ObjectDb:
             return self.db[pos]
         else:
             return None
+
+
+class KeywordDb:
+    db: dict[Function, list[str]]
+
+    def __init__(self) -> None:
+        self.db = {}
+
+    def append_possibility(self, fn: Function, poss: str) -> None:
+        if fn not in self.db:
+            self.db[fn] = []
+        fn_list = self.db[fn]
+        if poss not in fn_list:
+            fn_list.append(poss)
+
+    def __str__(self) -> str:
+        return str(self.db)

@@ -2,7 +2,7 @@ from inspect import isbuiltin, isclass, isfunction, ismethod
 from itertools import chain
 from typing import Any, Tuple
 from .tracer import Tracer
-from .db import ObjectDb, Position
+from .db import KeywordDb, ObjectDb, Position
 from .cache import FileCache
 from .object import FormalParamKind, Function
 import ast
@@ -300,10 +300,12 @@ class KeywordVal:
 class CallTracer(Tracer):
     db: ObjectDb
     kw_fns: ObjectDb
+    kwd_db: KeywordDb
 
-    def __init__(self, db: ObjectDb, kw_fns: ObjectDb) -> None:
+    def __init__(self, db: ObjectDb, kw_fns: ObjectDb, kwd_db: KeywordDb) -> None:
         self.db = db
         self.kw_fns = kw_fns
+        self.kwd_db = kwd_db
 
     def _find_keyword_params(self,
                              par_fn: Function,
@@ -400,5 +402,8 @@ class CallTracer(Tracer):
                     lg.info("Child: %s", fn_ob)
                     kwds = self._find_keyword_params(enc_ob, fn_ob, call_expr)
                     lg.info("Kwds: [%s]", ', '.join(map(str, kwds)))
+                    for kwd in kwds:
+                        fn = enc_ob if kwd.kind == KeywordValKind.PARENT else fn_ob
+                        self.kwd_db.append_possibility(fn, kwd.name)
             elif called_fn is None and kind != FunctionKind.UNKNOWN:
                 lg.error("called_fn not found at %s", pos)

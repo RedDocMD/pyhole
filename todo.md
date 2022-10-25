@@ -4,7 +4,7 @@
 - [ ] Ensure actual keyword arguments are printed
 - [ ] Create decorator to automatically start and stop tracer at 
 beginning and end of function
-- [ ] Accumulate keyword arguments over test cases
+- [x] Accumulate keyword arguments over test cases
 - [ ] Cover dictionary accesses
 - [ ] Add code to resolve import paths directly
 - [ ] Cover dictionary mutations
