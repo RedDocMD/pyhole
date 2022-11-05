@@ -3,6 +3,7 @@ from pathlib import PurePath
 from typing import Any, Union
 from types import NoneType
 import ast
+import termcolor
 
 
 class SourceSpan:
@@ -253,7 +254,8 @@ class Function(Object):
         return out
 
     def __str__(self) -> str:
-        return "function {}({})".format(self.full_path(), self._format_args())
+        return "function {}({})".format(termcolor.colored(self.full_path(), 'yellow', attrs=['bold']),
+                                        self._format_args())
 
 
 def extract_statements_from_body(body):
