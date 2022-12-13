@@ -39,16 +39,47 @@ def nearest_enclosing_function(pos: Position, db: ObjectDb):
     return None
 
 
-# TODO: Handle all valid expressions
 def expr_call_expressions(expr):
+    def join_find(lst):
+        return list(chain.from_iterable(map(expr_call_expressions, lst)))
+
     match expr:
         case ast.Call():
             return [expr]
+        case ast.BoolOp(values=values):
+            return join_find(values)
+        case ast.NamedExpr(value=value):
+            return expr_call_expressions(value)
+        case ast.BinOp(left=left, right=right):
+            return expr_call_expressions(left) + expr_call_expressions(right)
+        case ast.UnaryOp(operand=operand):
+            return expr_call_expressions(operand)
+        case ast.IfExp(test=test, body=body, orelse=orelse):
+            return join_find([test, body, orelse])
+        case ast.Dict(keys=keys, values=values):
+            return join_find(keys + values)
+        case ast.Set(elts=elts):
+            return join_find(elts)
+        # Ignore: ListComp, SetComp, DictComp, GeneratorExpr
+        case ast.Await(value=value):
+            return expr_call_expressions(value)
+        # Ignore: Yield, YieldFrom
+        case ast.Compare(left=left, comparators=rest):
+            return join_find([left] + rest)
+        case ast.Subscript(value=value, slice=slice):
+            return join_find([value, slice])
+        case ast.Starred(value=value):
+            return expr_call_expressions(value)
+        case ast.List(elts=elts):
+            return join_find(elts)
+        case ast.Tuple(elts=elts):
+            return join_find(elts)
+        case ast.Slice(lower=lower, upper=upper, step=step):
+            return join_find([lower, upper, step])
         case _:
             return []
 
 
-# TODO: Handle all valid statements
 def stmt_call_expressions(stmt):
     match stmt:
         case ast.Return(value=expr):
