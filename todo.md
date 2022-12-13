@@ -1,5 +1,5 @@
 - [x] Use call tracing to figure out calls and arguments
-- [ ] Fix statment extraction to cover all nodes
+- [x] Fix statment extraction to cover all nodes
 - [ ] Fix call extraction to cover all nodes
 - [x] Ensure actual keyword arguments are printed
 - [x] Create decorator to automatically start and stop tracer at 

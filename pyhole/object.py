@@ -265,10 +265,17 @@ def extract_statements_from_body(body):
     return stmts
 
 
-# TODO: Handle all valid nodes
 def extract_statements(node):
     stmts = {node.lineno: node}
     match node:
+        # Don't recurse into function or definitions, that is handled else-where
+        case ast.FunctionDef():
+            return {}
+        case ast.AsyncFunctionDef():
+            return {}
+        case ast.ClassDef():
+            return {}
+        # For the rest, recurse
         case ast.For(body=body):
             stmts.update(extract_statements_from_body(body))
         case ast.AsyncFor(body=body):
@@ -281,6 +288,14 @@ def extract_statements(node):
             stmts.update(extract_statements_from_body(body))
         case ast.AsyncWith(body=body):
             stmts.update(extract_statements_from_body(body))
+        case ast.Match(cases=cases):
+            for cs in cases:
+                stmts.update(extract_statements_from_body(cs.body))
+        case ast.Try(body=body, handlers=handlers, orelse=orelse, finalbody=finalbody):
+            for b in [body, orelse, finalbody]:
+                stmts.update(extract_statements_from_body(b))
+            for h in handlers:
+                stmts.update(extract_statements_from_body(h.body))
     return stmts
 
 
