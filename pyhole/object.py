@@ -59,6 +59,7 @@ class Object:
     source_span: SourceSpan
     parent: Union["Object", None]
     children: dict[str, "Object"]
+    alt_counts: dict[str, int]
     name: str
 
     def __init__(
@@ -68,6 +69,7 @@ class Object:
         self.parent = parent
         self.name = name
         self.children = {}
+        self.alt_counts = {}
 
     def full_path(self) -> ObjectPath:
         path = ObjectPath()
@@ -79,8 +81,19 @@ class Object:
         return path
 
     def append_child(self, name: str, child: "Object") -> None:
+        if name in self.children:
+            if name in self.alt_counts:
+                self.alt_counts[name] = self.alt_counts[name] + 1
+            else:
+                self.alt_counts[name] = 0
+            alt_cnt = self.alt_counts[name]
+            alt_ob = AltObject(child.source_span, child.name,
+                               child, alt_cnt, child.parent)
+
+            name = alt_ob.name
+            child = alt_ob
         assert name not in self.children, \
-            f'{name} already child of {self.ob_type()} {self.name}'
+            f'{child.ob_type()} {name} already child of {self.ob_type()} {self.name}'
         self.children[name] = child
 
     def ob_type(self) -> str:
@@ -118,6 +131,27 @@ class Object:
 
     def __hash__(self):
         return hash((self.source_span, self.ob_type(), self.name))
+
+
+# This for representing code such as:
+# if foo == 'hello':
+#     def bar():
+#         print('forrest')
+# else:
+#     def bar():
+#         print('gump')
+# Here, the first bar() will be the main object
+# The second bar() will be represented as an alt-object
+class AltObject(Object):
+    alt_name: str
+    sub_ob: Object
+
+    def __init__(self, source_span: SourceSpan, name: str,
+                 sub_ob: Object, alt_cnt: int, parent: Object = None) -> None:
+        alt_name = f'{name}#{alt_cnt}'
+        super().__init__(source_span, alt_name, parent)
+        self.alt_name = alt_name
+        self.sub_ob = sub_ob
 
 
 class Module(Object):
@@ -331,7 +365,7 @@ class ObjectCreator(ast.NodeVisitor):
 
     def visit_Module(self, mod: ast.Module) -> Any:
         par = self._parent()
-        ss = SourceSpan(self.filename, 1, self.line_cnt)
+        ss = SourceSpan(self.filename, 0, self.line_cnt)
         name = self._mod_name()
 
         ob = Module(ss, name, par)

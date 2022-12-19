@@ -93,10 +93,14 @@ class Project:
     def _populate_db_intern(self, par_st: list[Object], directory: PurePath) -> None:
         par = par_st[-1]
         new_mod, new_dirs = self._populate_from_directory(directory, par)
+        # Might happen if directory doesn't have __init__.py file
+        if not new_mod:
+            return
         if self.root_ob is None:
             self.root_ob = new_mod
         if par:
-            par.append(new_mod)
+            par.append_child(new_mod.name, new_mod)
+        par_st.append(new_mod)
         for new_dir in new_dirs:
             self._populate_db_intern(par_st, new_dir)
         par_st.pop()
@@ -108,8 +112,7 @@ class Project:
     ) -> Tuple[Module, list[PurePath]]:
         drc = dir_children(directory)
         if drc.init is None:
-            raise InitPyNotFound(
-                "__init__.py not found in {}".format(directory))
+            return None, []
 
         # Find main module of this directory
         main_mod = mod_from_file(drc.init)
