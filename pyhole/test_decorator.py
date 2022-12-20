@@ -7,7 +7,7 @@ from pyhole.tracer import Tracer
 
 projects: list[Project] = []
 kwd_db = KeywordDb()
-tracer: Tracer | NoneType = None
+tracer: Tracer | None = None
 
 
 class TestCase:

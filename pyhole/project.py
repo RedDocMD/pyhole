@@ -1,5 +1,4 @@
 from pathlib import PurePath, Path
-from types import NoneType
 from .object import ObjectCreator, Object, Module, SourceSpan, Function
 from .db import ObjectDb, Position
 from typing import Tuple
@@ -48,7 +47,7 @@ class InitPyNotFound(Exception):
     pass
 
 
-def mod_from_file(path: PurePath | str, mod_name: str | NoneType = None) -> Module:
+def mod_from_file(path: PurePath | str, mod_name: str | None = None) -> Module:
     if isinstance(path, str):
         path = PurePath(path)
     with open(path) as f:
@@ -70,7 +69,7 @@ class Project:
     root: PurePath
     db: ObjectDb
     kw_fns: ObjectDb
-    root_ob: Object
+    root_ob: Object | None
 
     def __init__(self, root: PurePath) -> None:
         self.root = root
@@ -109,7 +108,7 @@ class Project:
     # Returns list of sub-directories
     def _populate_from_directory(
         self, directory: PurePath, par: Object | None
-    ) -> Tuple[Module, list[PurePath]]:
+    ) -> Tuple[Module | None, list[PurePath]]:
         drc = dir_children(directory)
         if drc.init is None:
             return None, []
@@ -126,7 +125,7 @@ class Project:
             main_mod.append_child(mod.name, mod)
             self._populate_from_object(mod)
 
-        return (main_mod, drc.dirs)
+        return main_mod, drc.dirs
 
     def _populate_from_object(self, ob: Object) -> None:
         pos = position_from_source_span(ob.source_span)
@@ -154,7 +153,7 @@ class IncrementalProject:
 
     def add_file(self, path: str, fullname: str) -> None:
         name_parts = fullname.split('.')
-        par_mod: Module | NoneType = None
+        par_mod: Module | None = None
         mod_name = name_parts[-1]
         if len(name_parts) > 1:
             par_name = '.'.join(name_parts[:-1])

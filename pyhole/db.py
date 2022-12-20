@@ -1,7 +1,7 @@
-from types import FunctionType, MethodType, NoneType
+from types import FunctionType, MethodType
 from .object import Object, Function
 from pathlib import PurePath
-from typing import Tuple, Union
+from typing import Tuple
 
 
 class Position:
@@ -39,7 +39,7 @@ class Position:
 
 class ObjectDb:
     db: dict[Position, Object]
-    file_fn_db: dict[str, list[Tuple[Position, Object]]]
+    file_fn_db: dict[str, list[Tuple[int, Function]]]
 
     def __init__(self) -> None:
         self.db = {}
@@ -80,7 +80,7 @@ class ObjectDb:
         self.file_fn_db[filename] = file_fn_obs
         return file_fn_obs
 
-    def lookup_fn(self, fn: Union[FunctionType, MethodType]) -> Union[Object, NoneType]:
+    def lookup_fn(self, fn: FunctionType | MethodType) -> Object | None:
         if not hasattr(fn, "__code__"):
             return None
         code = fn.__code__

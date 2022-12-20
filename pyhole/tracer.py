@@ -62,7 +62,7 @@ class PrintTracer(Tracer):
     print_line: bool
     ignore_patterns: list[re.Pattern]
 
-    def __init__(self, print_line: bool = True, ignore_patterns: list[str] = []):
+    def __init__(self, print_line: bool = True, ignore_patterns: list[str] | None = None):
         super().__init__()
         self.print_line = print_line
         self.ignore_patterns = [re.compile(pat) for pat in ignore_patterns]

@@ -262,8 +262,8 @@ class Function(Object):
         return "func"
 
     def _format_args(self) -> str:
-        def make_arg_list(args):
-            return ", ".join(map(lambda x: x.arg, args))
+        def make_arg_list(args_list):
+            return ", ".join(map(lambda x: x.arg, args_list))
 
         args = make_arg_list(self.args.args)
         posonly = make_arg_list(self.args.posonlyargs)
@@ -288,7 +288,7 @@ class Function(Object):
         return out
 
     def __str__(self) -> str:
-        return "function {}({})".format(termcolor.colored(self.full_path(), 'yellow', attrs=['bold']),
+        return "function {}({})".format(termcolor.colored(str(self.full_path()), 'yellow', attrs=['bold']),
                                         self._format_args())
 
 

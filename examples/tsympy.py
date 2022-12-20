@@ -1,4 +1,4 @@
-from pyhole import test_case, exec_cases, add_project, get_kwd_db
+from pyhole import exec_cases, add_project, get_kwd_db
 from pyhole.project import Project
 from pathlib import Path
 import logging

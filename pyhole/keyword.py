@@ -4,11 +4,11 @@ from typing import Any, Tuple, Union
 from .tracer import Tracer
 from .db import KeywordDb, ObjectDb, Position
 from .cache import FileCache
-from .object import FormalParamKind, Function
+from .object import FormalParamKind, Function, Object
 import ast
 from termcolor import colored
 import logging as lg
-from types import FrameType, FunctionType, MethodType, NoneType
+from types import FrameType, FunctionType, MethodType
 import enum
 
 
@@ -66,8 +66,8 @@ def expr_call_expressions(expr):
         # Ignore: Yield, YieldFrom
         case ast.Compare(left=left, comparators=rest):
             return join_find([left] + rest)
-        case ast.Subscript(value=value, slice=slice):
-            return join_find([value, slice])
+        case ast.Subscript(value=value, slice=sl):
+            return join_find([value, sl])
         case ast.Starred(value=value):
             return expr_call_expressions(value)
         case ast.List(elts=elts):
@@ -90,7 +90,7 @@ def stmt_call_expressions(stmt):
             return expr_call_expressions(expr)
         case ast.AnnAssign(value=expr):
             return expr_call_expressions(expr)
-        case ast.Expr(expr=expr):
+        case ast.Expr(value=expr):
             return expr_call_expressions(expr)
         case _:
             return []
@@ -106,10 +106,11 @@ def extract_keywords(kwds):
 
 class SimpleKeywordTracer(Tracer):
     db: ObjectDb
-    kw_fns: ObjectDb
+    kw_fns: set[Object]
     fc: FileCache
 
     def __init__(self, db: ObjectDb, kw_fns: ObjectDb):
+        super().__init__()
         self.db = db
         self.kw_fns = set(kw_fns.db.values())
         self.fc = FileCache()
@@ -272,7 +273,7 @@ def find_called_fn(expr: ast.Expression, sym_tab: SymbolTable) -> Tuple[Any, Fun
             if not fn:
                 lg.error("%s for Name not found in loc or glob", name)
             return fn, kind.to_function_type()
-        case ast.Attribute(value=value, attr=attr):
+        case ast.Attribute(value=expr):
             # TODO: Check the expr_context
             parts = split_attr_expr(expr)
             for part in parts:
@@ -328,6 +329,12 @@ class KeywordVal:
         return f"{self.name} ({self.kind})"
 
 
+def _enc_ob_pos(frame: FrameType) -> Position:
+    filename = frame.f_code.co_filename
+    lineno = frame.f_code.co_firstlineno
+    return Position(filename, lineno)
+
+
 class CallTracer(Tracer):
     dbs: list[ObjectDb]
     kw_fns: list[ObjectDb]
@@ -336,6 +343,7 @@ class CallTracer(Tracer):
     def __init__(self, dbs: ObjectDb | list[ObjectDb],
                  kw_fns: ObjectDb | list[ObjectDb],
                  kwd_db: KeywordDb) -> None:
+        super().__init__()
         if not isinstance(dbs, list):
             self.dbs = [dbs]
         else:
@@ -349,20 +357,16 @@ class CallTracer(Tracer):
     def _is_kwd_fn(self, fn: Function) -> bool:
         return any(map(lambda dt: dt.has_ob(fn), self.kw_fns))
 
-    def _lookup_fn(self, fn: Union[FunctionType, MethodType]) -> Function | NoneType:
+    def _lookup_fn(self, fn: Union[FunctionType, MethodType]) -> Function | None:
         for db in self.dbs:
             out = db.lookup_fn(fn)
             if out:
+                assert(isinstance(out, Function))
                 return out
         return None
 
-    def _enc_ob_pos(self, frame: FrameType) -> Position:
-        filename = frame.f_code.co_filename
-        lineno = frame.f_code.co_firstlineno
-        return Position(filename, lineno)
-
-    def _enc_fn(self, frame: FrameType) -> Function | NoneType:
-        pos = self._enc_ob_pos(frame)
+    def _enc_fn(self, frame: FrameType) -> Function | None:
+        pos = _enc_ob_pos(frame)
         for db in self.dbs:
             if pos in db:
                 ob = db[pos]
@@ -381,17 +385,17 @@ class CallTracer(Tracer):
 
         params = child_fn.get_formal_params()
         posonly_params = list(
-            filter(lambda param: param.kind == FormalParamKind.POSONLY, params))
+            filter(lambda p: p.kind == FormalParamKind.POSONLY, params))
         norm_params = list(
-            filter(lambda param: param.kind == FormalParamKind.NORMAL and param.name != "self", params))
+            filter(lambda p: p.kind == FormalParamKind.NORMAL and p.name != "self", params))
         kwonly_params = list(
-            filter(lambda param: param.kind == FormalParamKind.KWONLY, params))
+            filter(lambda p: p.kind == FormalParamKind.KWONLY, params))
 
         # Figure out child kw
         if child_has_kw:
             kwds = call_expr.keywords
             param_names = list(
-                filter(lambda param: param.name, norm_params + kwonly_params))
+                filter(lambda p: p.name, norm_params + kwonly_params))
             for kwd in kwds:
                 name = kwd.arg
                 if name and name not in param_names:
@@ -416,8 +420,8 @@ class CallTracer(Tracer):
                     break
 
             if targ_kwd_found:
-                kwds_covered = list(map(lambda kwd: kwd.arg,
-                                        filter(lambda kwd: kwd.arg, kwds)))
+                kwds_covered = list(map(lambda k: k.arg,
+                                        filter(lambda k: k.arg, kwds)))
 
                 if not star_pos_found:
                     pos_covered_cnt = len(args)
@@ -430,11 +434,11 @@ class CallTracer(Tracer):
                 # Then remove all normal params with default values or is in kwds_covered
                 # TODO: Strict mode for required keyword arguments
                 norm_params_left = list(
-                    filter(lambda param: param.name not in kwds_covered,
+                    filter(lambda p: p.name not in kwds_covered,
                            norm_params[norm_params_covered:]))
                 # Find kwonly args that have not been covered
                 kwonly_params_left = list(
-                    filter(lambda param: param.name not in kwds_covered, kwonly_params))
+                    filter(lambda p: p.name not in kwds_covered, kwonly_params))
 
                 # That all must be accounted for by **kwargs
                 for param in chain(norm_params_left, kwonly_params_left):

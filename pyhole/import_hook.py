@@ -53,7 +53,7 @@ class PyholeMetaPathFinder(abc.MetaPathFinder):
                 lg.debug("Importing path: %s (%s)", spec.loader.path, fullname)
                 self.project.add_file(spec.loader.path, fullname)
             else:
-                lg.warn('Loader returned for %s has no path', fullname)
+                lg.warning('Loader returned for %s has no path', fullname)
 
             # if isinstance(spec.loader, _frozen_importlib_external.SourceFileLoader):
             #     spec.loader = PyholeSourceFileLoader(
