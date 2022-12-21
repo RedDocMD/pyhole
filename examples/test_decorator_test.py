@@ -1,4 +1,5 @@
 from pyhole import test_case, exec_cases, add_project, get_kwd_db
+from pyhole.db import KeywordDb
 from pyhole.project import Project
 from pathlib import Path
 import logging
@@ -46,6 +47,23 @@ def grid_print(words):
     print()
 
 
+def print_fancy(kdb: KeywordDb) -> None:
+    print('┌' + '─' * 19 + '┐')
+    print('│ POSSIBLE KEYWORDS │')
+    print('└' + '─' * 19 + '┘')
+    for fn, kwds in kdb.items():
+        print(f'  {fn}')
+        fn_len = len('function') + 3 + len(str(fn.full_path())) + len(fn._format_args())
+        print(' ' + '─' * (fn_len + 2))
+        grid_print(kwds)
+        print()
+
+
+def print_simple(kdb: KeywordDb) -> None:
+    for k, v in kdb.items():
+        print(k, ":", v)
+
+
 if __name__ == "__main__":
     logging.basicConfig(format='%(levelname)s: %(message)s',
                         level=logging.WARNING)
@@ -59,13 +77,7 @@ if __name__ == "__main__":
     add_project(project)
     exec_cases()
     kwd_db = get_kwd_db()
-    print('┌' + '─' * 19 + '┐')
-    print('│ POSSIBLE KEYWORDS │')
-    print('└' + '─' * 19 + '┘')
-    for fn, kwds in kwd_db.items():
-        print(f'  {fn}')
-        fn_len = len('function') + 3 + len(str(fn.full_path())) + \
-            len(fn._format_args())
-        print(' ' + '─' * (fn_len + 2))
-        grid_print(kwds)
-        print()
+    # print_simple(kwd_db)
+    for fn in project.kw_fns.values():
+        if fn not in kwd_db.items():
+            print(fn)

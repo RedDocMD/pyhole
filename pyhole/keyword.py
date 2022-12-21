@@ -273,7 +273,7 @@ def find_called_fn(expr: ast.Expression, sym_tab: SymbolTable) -> Tuple[Any, Fun
             if not fn:
                 lg.error("%s for Name not found in loc or glob", name)
             return fn, kind.to_function_type()
-        case ast.Attribute(value=expr):
+        case ast.Attribute():
             # TODO: Check the expr_context
             parts = split_attr_expr(expr)
             for part in parts:
