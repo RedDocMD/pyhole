@@ -1,4 +1,4 @@
-from pyhole import test_case, exec_cases, add_project, get_kwd_db
+from pyhole import test_case, exec_cases, add_project, get_kwd_db, utils
 from pyhole.db import KeywordDb
 from pyhole.project import Project
 from pathlib import Path
@@ -6,25 +6,28 @@ import logging
 import requests
 
 
+TEST_URL = "http://localhost:8080"
+
+
 @test_case
 def test_get():
-    requests.get("https://httpbin.org/get")
+    requests.get("{}/get".format(TEST_URL))
 
 
 @test_case
 def test_post():
-    requests.post("https://httpbin.org/post", data={'key': 'value'})
+    requests.post("{}/post".format(TEST_URL), data={'key': 'value'})
 
 
 @test_case
 def test_session():
     sess = requests.Session()
     sess.headers.update({'x-test': 'true'})
-    sess.get("https://httpbin.org/get")
-    sess.post("https://httpbin.org/post")
-    sess.patch("https://httpbin.org/patch")
-    sess.delete("https://httpbin.org/delete")
-    sess.put("https://httpbin.org/put")
+    sess.get("{}/get".format(TEST_URL))
+    sess.post("{}/post".format(TEST_URL))
+    sess.patch("{}/patch".format(TEST_URL))
+    sess.delete("{}/delete".format(TEST_URL))
+    sess.put("{}/put".format(TEST_URL))
 
 
 @test_case
@@ -64,7 +67,7 @@ def print_simple(kdb: KeywordDb) -> None:
         print(k, ":", v)
 
 
-if __name__ == "__main__":
+def main():
     logging.basicConfig(format='%(levelname)s: %(message)s',
                         level=logging.WARNING)
     cwd = Path.cwd()
@@ -77,7 +80,16 @@ if __name__ == "__main__":
     add_project(project)
     exec_cases()
     kwd_db = get_kwd_db()
-    # print_simple(kwd_db)
+    print(utils.boxed('Found'))
+    print_simple(kwd_db)
+    cnt = 0
+    print(utils.boxed('Not Found'))
     for fn in project.kw_fns.values():
-        if fn not in kwd_db.items():
+        if fn not in kwd_db.db:
             print(fn)
+            cnt += 1
+    print('Not found count:', cnt)
+
+
+if __name__ == "__main__":
+    main()

@@ -2,3 +2,4 @@
 .venv
 tests/__pycache__/
 pyhole/__pycache__/
+examples/__pycache__/

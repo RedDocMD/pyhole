@@ -446,6 +446,25 @@ class CallTracer(Tracer):
 
         return res
 
+    def trace_call(self, frame: FrameType):
+        enc_ob = self._enc_fn(frame)
+        if not enc_ob:
+            return
+        assert isinstance(enc_ob, Function)
+        if not self._is_kwd_fn(enc_ob):
+            return
+        sym_tab = SymbolTable(
+            frame.f_locals, frame.f_globals, frame.f_builtins)
+        _, fn_kind = sym_tab.lookup(enc_ob.name)
+        if fn_kind == SymbolKind.BUILTIN or fn_kind == SymbolKind.NOT_FOUND:
+            return
+        kw_name = enc_ob.get_kwargs_name()
+        kw_dict, kw_kind = sym_tab.lookup(kw_name)
+        assert kw_kind == SymbolKind.LOC
+        assert isinstance(kw_dict, dict)
+        for key in kw_dict.keys():
+            self.kwd_db.append_possibility(enc_ob, key)
+
     def trace_line(self, frame: FrameType):
         enc_ob = self._enc_fn(frame)
         ln = frame.f_lineno

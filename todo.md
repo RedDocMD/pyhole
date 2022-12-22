@@ -6,7 +6,7 @@
 beginning and end of function
 - [x] Accumulate keyword arguments over test cases
 - [ ] Cover dictionary accesses
-- [ ] Extract keys directly from kwargs
+- [x] Extract keys directly from kwargs
 - [ ] Add code to resolve project paths directly
 - [ ] Make indexing faster
 - [ ] Cover dictionary mutations
