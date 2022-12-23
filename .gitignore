@@ -1,5 +1,6 @@
 /pyhole.egg-info/
-.venv
+.venv/
 tests/__pycache__/
 pyhole/__pycache__/
 examples/__pycache__/
+dist/

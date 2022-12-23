@@ -1,4 +1,4 @@
-from types import CodeType, FunctionType, NoneType
+from types import CodeType, FunctionType
 from typing import Any
 from pyhole.db import KeywordDb
 from pyhole.keyword import CallTracer

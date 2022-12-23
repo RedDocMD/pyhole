@@ -1,3 +1,28 @@
 [build-system]
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyhole"
+version = "0.0.1"
+authors = [
+    { name = "Deep Majumder", email = "deep.majumder2019@gmail.com" }
+]
+description = "Library to discover keyword argument keys"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Documentation",
+]
+
+dependencies = [
+    "termcolor",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/RedDocMD/pyhole"
+"Bug Tracker" = "https://github.com/RedDocMD/pyhole/issues"
