@@ -259,6 +259,11 @@ class SymbolTable:
 
 
 def lookup_fn(ob: Any, names: list[str]) -> Any:
+    # Fixme: This check should never be needed
+    # But for expressions such as "foo.bar() if not foo else None",
+    # we will have ob as None if foo is None.
+    if ob is None:
+        return None
     thing = getattr(ob, names[0])
     if len(names) == 1:
         return thing
@@ -286,6 +291,9 @@ def find_called_fn(expr: ast.Expression, sym_tab: SymbolTable) -> Tuple[Any, Fun
                     "%s for Attribute not found in symbol table %s", name, parts)
                 return None, FunctionKind.NOT_FOUND
             fn = lookup_fn(base, parts[1:])
+            # FIXME: Probably a hack!
+            if fn is None:
+                return None, FunctionKind.UNKNOWN
             return fn, kind.to_function_type()
     return None, FunctionKind.NOT_FOUND
 
@@ -301,7 +309,10 @@ def resolve_function(fn, kind):
     if isbuiltin(fn):
         return fn, FunctionKind.BUILTIN
     if not isfunction(fn) and not ismethod(fn):
-        raise RuntimeError(f"{fn} was expected to be a function")
+        dc = fn.__dict__
+        if "__call__" in dc:
+            return dc["__call__"], kind
+        return None, FunctionKind.UNKNOWN
     return fn, kind
 
 
