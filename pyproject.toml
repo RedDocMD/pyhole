@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyhole"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
     { name = "Deep Majumder", email = "deep.majumder2019@gmail.com" }
 ]
@@ -21,8 +21,12 @@ classifiers = [
 
 dependencies = [
     "termcolor",
+    "pytest",
 ]
 
 [project.urls]
 "Homepage" = "https://github.com/RedDocMD/pyhole"
 "Bug Tracker" = "https://github.com/RedDocMD/pyhole/issues"
+
+[project.entry-points]
+pytest11 = { "pytest-pyhole" = "pytest_pyhole.plugin" }
