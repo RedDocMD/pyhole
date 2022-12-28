@@ -1,3 +1,5 @@
+import pytest
+
 from pyhole.tracer import Tracer
 from pyhole.keyword import KeywordDb, CallTracer
 from pyhole.project import Project
@@ -25,21 +27,17 @@ def pytest_sessionstart(session):
         tracer = CallTracer(project.db, project.kw_fns, kwd_db)
 
 
-def pytest_sessionfinish():
-    global kwd_db, tracer
-    print("\nDB:")
-    for k, v in kwd_db.items():
-        print(k, ":", v)
-    tracer = None
-
-
-def pytest_runtest_setup():
+@pytest.hookimpl(hookwrapper=True)
+def pytest_pyfunc_call():
     global tracer
     if tracer is not None:
         tracer.enable_tracing()
-
-
-def pytest_runtest_teardown():
-    global tracer
+    _ = yield
     if tracer is not None:
         tracer.disable_tracing()
+
+
+def pytest_terminal_summary():
+    global kwd_db
+    if tracer is not None:
+        kwd_db.print_fancy()
