@@ -36,32 +36,6 @@ def test_json():
     resp.json()
 
 
-def grid_print(words):
-    width = 20
-    per_row = 5
-    print('    ', end='')
-    for i, word in enumerate(words):
-        if i > 0 and i % per_row == 0:
-            print()
-            print('    ', end='')
-        pad_len = width - len(word)
-        pad = ' ' * pad_len
-        print('{}{}'.format(word, pad), end='')
-    print()
-
-
-def print_fancy(kdb: KeywordDb) -> None:
-    print('┌' + '─' * 19 + '┐')
-    print('│ POSSIBLE KEYWORDS │')
-    print('└' + '─' * 19 + '┘')
-    for fn, kwds in kdb.items():
-        print(f'  {fn}')
-        fn_len = len('function') + 3 + len(str(fn.full_path())) + len(fn._format_args())
-        print(' ' + '─' * (fn_len + 2))
-        grid_print(kwds)
-        print()
-
-
 def print_simple(kdb: KeywordDb) -> None:
     for k, v in kdb.items():
         print(k, ":", v)
@@ -81,7 +55,7 @@ def main():
     exec_cases()
     kwd_db = get_kwd_db()
     print(utils.boxed('Found'))
-    print_simple(kwd_db)
+    kwd_db.print_fancy()
     cnt = 0
     print(utils.boxed('Not Found'))
     for fn in project.kw_fns.values():
