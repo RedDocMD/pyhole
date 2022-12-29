@@ -1,6 +1,9 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project.entry-points]
+pytest11 = { "pytest-pyhole" = "pytest_pyhole.plugin" }
 
 [project]
 name = "pyhole"
@@ -18,7 +21,6 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Software Development :: Documentation",
 ]
-
 dependencies = [
     "termcolor",
     "pytest",
@@ -27,6 +29,3 @@ dependencies = [
 [project.urls]
 "Homepage" = "https://github.com/RedDocMD/pyhole"
 "Bug Tracker" = "https://github.com/RedDocMD/pyhole/issues"
-
-[project.entry-points]
-pytest11 = { "pytest-pyhole" = "pytest_pyhole.plugin" }
