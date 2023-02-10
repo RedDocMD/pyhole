@@ -3,7 +3,7 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project.entry-points]
-pytest11 = { "pytest-pyhole" = "pytest_pyhole.plugin" }
+pytest11 = { pytest-pyhole = "pytest_pyhole.plugin" }
 
 [project]
 name = "pyhole"
