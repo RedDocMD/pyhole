@@ -1,5 +1,6 @@
 from pathlib import PurePath, Path
-from .object import ObjectCreator, Object, Module, SourceSpan, Function
+from . import Object, Module, SourceSpan, Function
+from . import indexer, Indexer
 from .db import ObjectDb, Position
 from typing import Tuple
 import re
@@ -48,6 +49,8 @@ class InitPyNotFound(Exception):
 
 
 def mod_from_file(path: PurePath | str, mod_name: str | None = None) -> Module:
+    from .object import ObjectCreator
+
     if isinstance(path, str):
         path = PurePath(path)
     with open(path) as f:
@@ -77,8 +80,22 @@ class Project:
         self.kw_fns = ObjectDb()  # Functions with keyword arguments
         self.root_ob = None
 
-        self._populate_db()
-        self._find_kw_fns()
+        if indexer == Indexer.RUST:
+            from . import module_from_dir
+            mod = module_from_dir(str(root))
+            self.root_ob = mod
+            self._populate_db_from_ob(mod)
+        else:
+            self._populate_db()
+            self._find_kw_fns()
+
+    def _populate_db_from_ob(self, ob: Object) -> None:
+        pos = position_from_source_span(ob.source_span)
+        self.db[pos] = ob
+        if isinstance(ob, Function) and ob.has_kwargs_dict():
+            self.kw_fns[pos] = ob
+        for child in ob.children.values():
+            self._populate_db_from_ob(child)
 
     def _find_kw_fns(self) -> None:
         for pos, ob in self.db.items():

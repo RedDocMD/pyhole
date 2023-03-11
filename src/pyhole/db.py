@@ -1,5 +1,5 @@
 from types import FunctionType, MethodType
-from .object import Object, Function
+from . import Object, Function
 from .utils import horizontal_line, boxed, tabled
 from pathlib import PurePath
 from typing import Tuple
@@ -118,7 +118,8 @@ class KeywordDb:
             print(boxed('POSSIBLE KEYWORDS'))
             for fn, kwds in self.items():
                 print(f'  {fn}')
-                fn_len = len('function') + 3 + len(str(fn.full_path())) + len(fn._format_args())
+                fn_len = len('function') + 3 + \
+                    len(str(fn.full_path())) + len(fn._format_args())
                 print('  ' + horizontal_line(fn_len))
                 print(tabled(kwds, spacing=8))
                 print()

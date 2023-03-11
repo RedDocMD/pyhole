@@ -4,7 +4,7 @@ from typing import Any, Tuple, Union
 from .tracer import Tracer
 from .db import KeywordDb, ObjectDb, Position
 from .cache import FileCache
-from .object import FormalParamKind, Function, Object
+from . import FormalParamKind, Function, Object
 import ast
 from termcolor import colored
 import logging as lg
@@ -372,7 +372,7 @@ class CallTracer(Tracer):
         for db in self.dbs:
             out = db.lookup_fn(fn)
             if out:
-                assert(isinstance(out, Function))
+                assert (isinstance(out, Function))
                 return out
         return None
 
