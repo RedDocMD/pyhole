@@ -20,6 +20,9 @@ def project_stats(proj):
 cwd = Path.cwd()
 root = cwd.parent / "parse-py" / "projects"
 paths = [
+    "/home/dknite/work/stuff/scikit-learn-main/sklearn",
+    "/home/dknite/work/stuff/pygments-master/pygments",
+    "/home/dknite/work/stuff/numpy-main/numpy",
     root / "requests" / "requests",
     root / "pandas" / "pandas",
     root / "sympy" / "sympy",
