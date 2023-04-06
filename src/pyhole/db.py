@@ -2,7 +2,7 @@ from types import FunctionType, MethodType
 from . import Object, Function
 from .utils import horizontal_line, boxed, tabled
 from pathlib import PurePath
-from typing import Tuple
+from typing import Tuple, TextIO
 
 
 class Position:
@@ -123,3 +123,26 @@ class KeywordDb:
                 print('  ' + horizontal_line(fn_len))
                 print(tabled(kwds, spacing=8))
                 print()
+
+    def render_rst(self, file: TextIO) -> None:
+        KeywordDb._render_section_header(
+            file, 'Keyword Argument Functions', '=')
+        file.write(
+            f'There are {len(self.db)} functions for which valid keys were found.\n\n')
+        for fn, kwds in self.items():
+            fp = str(fn.full_path())
+            KeywordDb._render_section_header(file, fp, '-')
+            name = fn.full_path().components[-1]
+            file.write(f'Signature: def {name}({fn._format_args()})\n\n')
+            file.write('Valid keys:\n\n')
+            for kwd in kwds:
+                file.write(f'* {kwd}\n')
+            file.write('\n')
+
+    @staticmethod
+    def _render_section_header(file: TextIO, header: str, sym: str) -> None:
+        guard = sym * (len(header) + 1)
+        file.write(f'{guard}\n')
+        file.write(f'{header}\n')
+        file.write(f'{guard}\n')
+        file.write('\n')

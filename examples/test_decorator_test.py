@@ -2,6 +2,7 @@ from pyhole import test_case, exec_cases, add_project, get_kwd_db, utils
 from pyhole.db import KeywordDb
 from pyhole.project import Project
 from pathlib import Path
+from io import StringIO
 import logging
 import requests
 
@@ -32,7 +33,7 @@ def test_session():
 
 @test_case
 def test_json():
-    resp = requests.get("https://httpbin.org/json")
+    resp = requests.get(f"{TEST_URL}/json")
     resp.json()
 
 
@@ -63,6 +64,10 @@ def main():
             print(fn)
             cnt += 1
     print('Not found count:', cnt)
+    with StringIO() as f:
+        kwd_db.render_rst(f)
+        print('Rendered RST:')
+        print(f.getvalue())
 
 
 if __name__ == "__main__":
