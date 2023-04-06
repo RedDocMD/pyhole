@@ -17,6 +17,12 @@ def pytest_addoption(parser):
         type=PurePath,
         default=None,
     )
+    parser.addoption(
+        '--rst-path',
+        nargs=1,
+        type=PurePath,
+        default=PurePath('kwargs.rst')
+    )
 
 
 def pytest_sessionstart(session):
@@ -37,7 +43,12 @@ def pytest_pyfunc_call():
         tracer.disable_tracing()
 
 
-def pytest_terminal_summary():
+def pytest_terminal_summary(config):
     global kwd_db
     if tracer is not None:
         kwd_db.print_fancy()
+        path = config.getoption("--rst-path")
+        if isinstance(path, list):
+            path = path[0]
+        with open(path, 'w') as f:
+            kwd_db.render_rst(f)
